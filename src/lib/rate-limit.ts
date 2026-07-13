@@ -51,6 +51,30 @@ export function clearFailures(scope: string, ip: string): void {
   store.delete(`${scope}:ip:${ip}`);
 }
 
+const globalForWrites = globalThis as unknown as {
+  __writeRateLimit?: Map<string, number[]>;
+};
+const writeStore = (globalForWrites.__writeRateLimit ??= new Map());
+
+/** In-memory write counter per scope+IP (likes, visitor POST, etc.). */
+export function writeAllowed(
+  scope: string,
+  ip: string,
+  max: number,
+  windowMs: number,
+): boolean {
+  const key = `${scope}:${ip}`;
+  const now = Date.now();
+  const times = (writeStore.get(key) ?? []).filter((t: number) => now - t < windowMs);
+  if (times.length >= max) {
+    writeStore.set(key, times);
+    return false;
+  }
+  times.push(now);
+  writeStore.set(key, times);
+  return true;
+}
+
 export function ipFromRequest(req: Request): string {
   const xff = req.headers.get('x-forwarded-for');
   if (xff) {

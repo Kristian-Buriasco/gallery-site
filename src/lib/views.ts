@@ -1,7 +1,9 @@
+import { lt } from 'drizzle-orm';
 import { headers } from 'next/headers';
 import { getDb, schema } from '@/db';
 
 const DEBOUNCE_MS = 30 * 60 * 1000;
+const RETENTION_MS = 90 * 24 * 60 * 60 * 1000;
 
 const globalForViews = globalThis as unknown as {
   __viewDebounce?: Map<string, number>;
@@ -20,6 +22,14 @@ async function clientIp(): Promise<string> {
     return parts[parts.length - 1] ?? 'unknown';
   }
   return h.get('x-real-ip') ?? 'unknown';
+}
+
+/** Drop view_events older than 90 days (called opportunistically, not every request). */
+export function pruneOldViewEvents(): void {
+  getDb()
+    .delete(schema.viewEvents)
+    .where(lt(schema.viewEvents.createdAt, Date.now() - RETENTION_MS))
+    .run();
 }
 
 function shouldRecord(galleryId: string, sessionKey: string): boolean {
@@ -45,6 +55,8 @@ export async function recordGalleryView(
     visitorId ??
     (sessionToken ? `tok:${sessionToken}` : `anon:${await clientIp()}`);
   if (!shouldRecord(galleryId, sessionKey)) return;
+
+  if (Math.random() < 0.01) pruneOldViewEvents();
 
   getDb()
     .insert(schema.viewEvents)

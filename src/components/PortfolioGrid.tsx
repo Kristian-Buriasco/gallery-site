@@ -6,19 +6,24 @@ import Lightbox, { HeartIcon, type LightboxPhoto } from './Lightbox';
 export default function PortfolioGrid({
   photos,
   slug,
+  showLikeCounts = false,
 }: {
   photos: LightboxPhoto[];
   slug: string;
+  showLikeCounts?: boolean;
 }) {
   const [open, setOpen] = useState<number | null>(null);
   const [liked, setLiked] = useState<Set<string>>(new Set());
+  const [counts, setCounts] = useState<Record<string, number>>({});
 
   useEffect(() => {
     let cancelled = false;
     fetch(`/api/portfolio/${slug}/likes`)
       .then((res) => (res.ok ? res.json() : null))
       .then((data) => {
-        if (!cancelled && data?.photoIds) setLiked(new Set(data.photoIds));
+        if (cancelled || !data) return;
+        if (data.photoIds) setLiked(new Set(data.photoIds));
+        if (data.counts) setCounts(data.counts);
       })
       .catch(() => {
         /* likes are non-essential */
@@ -31,13 +36,18 @@ export default function PortfolioGrid({
   const toggleLike = useCallback(
     async (photoId: string) => {
       const isLiked = liked.has(photoId);
-      // Optimistic update
       setLiked((prev) => {
         const next = new Set(prev);
         if (isLiked) next.delete(photoId);
         else next.add(photoId);
         return next;
       });
+      if (showLikeCounts) {
+        setCounts((prev) => ({
+          ...prev,
+          [photoId]: Math.max(0, (prev[photoId] ?? 0) + (isLiked ? -1 : 1)),
+        }));
+      }
       const res = await fetch(`/api/portfolio/${slug}/likes`, {
         method: isLiked ? 'DELETE' : 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -50,9 +60,15 @@ export default function PortfolioGrid({
           else next.delete(photoId);
           return next;
         });
+        if (showLikeCounts) {
+          setCounts((prev) => ({
+            ...prev,
+            [photoId]: Math.max(0, (prev[photoId] ?? 0) + (isLiked ? 1 : -1)),
+          }));
+        }
       }
     },
-    [liked, slug],
+    [liked, slug, showLikeCounts],
   );
 
   return (
@@ -75,16 +91,18 @@ export default function PortfolioGrid({
                 className="w-full"
               />
             </button>
-            {/* Like heart: hover-only, desktop-only, no public counts. */}
             <button
               type="button"
               onClick={() => toggleLike(p.id)}
               aria-label={liked.has(p.id) ? 'Unlike photo' : 'Like photo'}
-              className={`absolute right-2 bottom-2 hidden rounded-full p-1.5 text-white drop-shadow transition-opacity sm:block ${
+              className={`absolute right-2 bottom-2 hidden items-center gap-1 rounded-full p-1.5 text-xs text-white drop-shadow transition-opacity sm:flex ${
                 liked.has(p.id) ? 'opacity-100' : 'opacity-0 group-hover:opacity-70'
               }`}
             >
               <HeartIcon filled={liked.has(p.id)} className="h-5 w-5" />
+              {showLikeCounts && (
+                <span className="tabular-nums">{counts[p.id] ?? 0}</span>
+              )}
             </button>
           </div>
         ))}
@@ -97,6 +115,8 @@ export default function PortfolioGrid({
           onNavigate={setOpen}
           selectedIds={liked}
           onToggleSelect={toggleLike}
+          showLikeCounts={showLikeCounts}
+          likeCounts={counts}
         />
       )}
     </>

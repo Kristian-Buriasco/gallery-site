@@ -1,34 +1,17 @@
 import crypto from 'node:crypto';
-import { and, eq } from 'drizzle-orm';
+import { and, count, eq } from 'drizzle-orm';
 import { cookies } from 'next/headers';
 import { getDb, schema } from '@/db';
 import type { Gallery } from '@/db/schema';
 import { errorJson, json } from '@/lib/api';
-import { ipFromRequest } from '@/lib/rate-limit';
+import { ipFromRequest, writeAllowed } from '@/lib/rate-limit';
 import { isAdmin } from '@/lib/session';
 
 const LIKER_COOKIE = 'liker';
 const YEAR_SECONDS = 365 * 24 * 60 * 60;
 
-// Light write rate limit: 60/min/IP, just to prevent junk inserts.
-const WRITE_WINDOW_MS = 60 * 1000;
-const WRITE_MAX = 60;
-const globalForLikes = globalThis as unknown as {
-  __likeWrites?: Map<string, number[]>;
-};
-const writeLog = (globalForLikes.__likeWrites ??= new Map());
-
-function writeAllowed(ip: string): boolean {
-  const now = Date.now();
-  const times = (writeLog.get(ip) ?? []).filter((t: number) => now - t < WRITE_WINDOW_MS);
-  if (times.length >= WRITE_MAX) {
-    writeLog.set(ip, times);
-    return false;
-  }
-  times.push(now);
-  writeLog.set(ip, times);
-  return true;
-}
+const LIKE_WRITE_MAX = 60;
+const LIKE_WRITE_WINDOW_MS = 60 * 1000;
 
 type Params = { params: Promise<{ slug: string }> };
 
@@ -67,26 +50,46 @@ async function ensureLikerToken(): Promise<string> {
   return token;
 }
 
+function likeCountsForGallery(galleryId: string): Record<string, number> {
+  const rows = getDb()
+    .select({
+      photoId: schema.likes.photoId,
+      n: count(),
+    })
+    .from(schema.likes)
+    .innerJoin(schema.photos, eq(schema.likes.photoId, schema.photos.id))
+    .where(eq(schema.photos.galleryId, galleryId))
+    .groupBy(schema.likes.photoId)
+    .all();
+  return Object.fromEntries(rows.map((r) => [r.photoId, r.n]));
+}
+
 export async function GET(_req: Request, { params }: Params) {
   const { slug } = await params;
   const gallery = await resolveGallery(slug);
   if (gallery instanceof Response) return gallery;
 
   const token = await getLikerToken();
-  if (!token) return json({ photoIds: [] });
+  const photoIds = token
+    ? getDb()
+        .select({ photoId: schema.likes.photoId })
+        .from(schema.likes)
+        .innerJoin(schema.photos, eq(schema.likes.photoId, schema.photos.id))
+        .where(
+          and(
+            eq(schema.likes.likerToken, token),
+            eq(schema.photos.galleryId, gallery.id),
+          ),
+        )
+        .all()
+        .map((r) => r.photoId)
+    : [];
 
-  const rows = getDb()
-    .select({ photoId: schema.likes.photoId })
-    .from(schema.likes)
-    .innerJoin(schema.photos, eq(schema.likes.photoId, schema.photos.id))
-    .where(
-      and(
-        eq(schema.likes.likerToken, token),
-        eq(schema.photos.galleryId, gallery.id),
-      ),
-    )
-    .all();
-  return json({ photoIds: rows.map((r) => r.photoId) });
+  const body: { photoIds: string[]; counts?: Record<string, number> } = {
+    photoIds,
+  };
+  if (gallery.showLikeCounts) body.counts = likeCountsForGallery(gallery.id);
+  return json(body);
 }
 
 async function parsePhotoId(req: Request): Promise<string | null> {
@@ -114,7 +117,7 @@ export async function POST(req: Request, { params }: Params) {
   const { slug } = await params;
   const gallery = await resolveGallery(slug);
   if (gallery instanceof Response) return gallery;
-  if (!writeAllowed(ipFromRequest(req))) {
+  if (!writeAllowed('likes', ipFromRequest(req), LIKE_WRITE_MAX, LIKE_WRITE_WINDOW_MS)) {
     return errorJson('Too many requests', 429);
   }
 
@@ -137,7 +140,7 @@ export async function DELETE(req: Request, { params }: Params) {
   const { slug } = await params;
   const gallery = await resolveGallery(slug);
   if (gallery instanceof Response) return gallery;
-  if (!writeAllowed(ipFromRequest(req))) {
+  if (!writeAllowed('likes', ipFromRequest(req), LIKE_WRITE_MAX, LIKE_WRITE_WINDOW_MS)) {
     return errorJson('Too many requests', 429);
   }
 

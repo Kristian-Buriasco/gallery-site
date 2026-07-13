@@ -44,7 +44,11 @@ export default async function PortfolioGalleryPage({
             No photos yet.
           </p>
         ) : (
-          <PortfolioGrid photos={photos} slug={gallery.slug} />
+          <PortfolioGrid
+            photos={photos}
+            slug={gallery.slug}
+            showLikeCounts={gallery.showLikeCounts}
+          />
         )}
       </main>
     </div>

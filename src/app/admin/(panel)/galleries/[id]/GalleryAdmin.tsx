@@ -422,6 +422,14 @@ export default function GalleryAdmin({
               />
             </>
           )}
+          {!isClientGallery && (
+            <Toggle
+              label="Show public like counts"
+              hint="Visitors see aggregate counts next to hearts"
+              checked={gallery.showLikeCounts}
+              onChange={(v) => patchGallery({ showLikeCounts: v })}
+            />
+          )}
         </div>
       </section>
 

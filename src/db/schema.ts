@@ -39,6 +39,9 @@ export const galleries = sqliteTable('galleries', {
     .notNull()
     .default(true),
   published: integer('published', { mode: 'boolean' }).notNull().default(false),
+  showLikeCounts: integer('show_like_counts', { mode: 'boolean' })
+    .notNull()
+    .default(false),
   coverPhotoId: text('cover_photo_id'),
   sortOrder: integer('sort_order').notNull().default(0),
   ...timestamps,

@@ -57,6 +57,7 @@ export async function PATCH(req: Request, { params }: Params) {
     'downloadEnabled',
     'selectionExportEnabled',
     'published',
+    'showLikeCounts',
   ] as const) {
     if (typeof body[key] === 'boolean') updates[key] = body[key];
   }

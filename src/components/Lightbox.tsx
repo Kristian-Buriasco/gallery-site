@@ -18,6 +18,8 @@ interface Props {
   selectedIds?: Set<string>;
   onToggleSelect?: (photoId: string) => void;
   downloadEnabled?: boolean;
+  showLikeCounts?: boolean;
+  likeCounts?: Record<string, number>;
 }
 
 export default function Lightbox({
@@ -29,6 +31,8 @@ export default function Lightbox({
   selectedIds,
   onToggleSelect,
   downloadEnabled = false,
+  showLikeCounts = false,
+  likeCounts,
 }: Props) {
   const photo = photos[index];
   const touchStartX = useRef<number | null>(null);
@@ -84,9 +88,14 @@ export default function Lightbox({
               type="button"
               onClick={() => onToggleSelect(photo.id)}
               aria-label={selected ? 'Remove from selection' : 'Add to selection'}
-              className="p-1"
+              className="flex items-center gap-1 p-1"
             >
               <HeartIcon filled={selected} className="h-5 w-5" />
+              {showLikeCounts && (
+                <span className="tabular-nums text-neutral-400">
+                  {likeCounts?.[photo.id] ?? 0}
+                </span>
+              )}
             </button>
           )}
           {downloadEnabled && (

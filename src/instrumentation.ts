@@ -8,5 +8,8 @@ export async function register() {
     // in 'processing' from a previous run.
     const { recoverStuckJobs } = await import('@/lib/queue');
     recoverStuckJobs();
+
+    const { pruneOldViewEvents } = await import('@/lib/views');
+    pruneOldViewEvents();
   }
 }

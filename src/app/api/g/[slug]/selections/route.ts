@@ -1,4 +1,5 @@
 import { and, eq } from 'drizzle-orm';
+import { nanoid } from 'nanoid';
 import { getDb, schema } from '@/db';
 import type { Gallery, Visitor } from '@/db/schema';
 import { errorJson, json } from '@/lib/api';
@@ -7,9 +8,7 @@ import { getVisitorSession } from '@/lib/session';
 
 type Params = { params: Promise<{ slug: string }> };
 
-async function resolveContext(
-  slug: string,
-): Promise<{ gallery: Gallery; visitor: Visitor } | Response> {
+async function resolveGallery(slug: string): Promise<Gallery | Response> {
   const db = getDb();
   const gallery = db
     .select()
@@ -19,16 +18,50 @@ async function resolveContext(
   if (!gallery || gallery.type !== 'client' || !(await canViewGallery(gallery))) {
     return errorJson('Not found', 404);
   }
+  return gallery;
+}
+
+/** Resolve visitor from cookie; lazily persist deferred anonymous sessions. */
+async function resolveVisitor(gallery: Gallery): Promise<Visitor | Response> {
   const session = await getVisitorSession(gallery.id);
   if (!session.token) return errorJson('No visitor session', 401);
-  const visitor = db
+
+  const db = getDb();
+  const existing = db
     .select()
     .from(schema.visitors)
     .where(eq(schema.visitors.sessionToken, session.token))
     .get();
-  if (!visitor || visitor.galleryId !== gallery.id) {
+  if (existing && existing.galleryId === gallery.id) return existing;
+
+  const visitor: typeof schema.visitors.$inferInsert = {
+    id: nanoid(),
+    galleryId: gallery.id,
+    name: null,
+    email: null,
+    sessionToken: session.token,
+  };
+  try {
+    db.insert(schema.visitors).values(visitor).run();
+    return visitor as Visitor;
+  } catch {
+    const again = db
+      .select()
+      .from(schema.visitors)
+      .where(eq(schema.visitors.sessionToken, session.token))
+      .get();
+    if (again && again.galleryId === gallery.id) return again;
     return errorJson('No visitor session', 401);
   }
+}
+
+async function resolveContext(
+  slug: string,
+): Promise<{ gallery: Gallery; visitor: Visitor } | Response> {
+  const gallery = await resolveGallery(slug);
+  if (gallery instanceof Response) return gallery;
+  const visitor = await resolveVisitor(gallery);
+  if (visitor instanceof Response) return visitor;
   return { gallery, visitor };
 }
 

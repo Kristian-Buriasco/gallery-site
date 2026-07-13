@@ -5,8 +5,10 @@ import { errorJson, requireAdmin } from '@/lib/api';
 type Params = { params: Promise<{ id: string }> };
 
 function csvEscape(v: string): string {
-  if (/[",\n\r]/.test(v)) return `"${v.replaceAll('"', '""')}"`;
-  return v;
+  let s = v;
+  if (s && /^[=+\-@\t\r]/.test(s)) s = `'${s}`;
+  if (/[",\n\r]/.test(s)) return `"${s.replaceAll('"', '""')}"`;
+  return s;
 }
 
 export async function GET(_req: Request, { params }: Params) {

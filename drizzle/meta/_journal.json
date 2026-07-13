@@ -15,6 +15,13 @@
       "when": 1783979449968,
       "tag": "0001_likes_and_views",
       "breakpoints": true
+    },
+    {
+      "idx": 2,
+      "version": "6",
+      "when": 1783983600000,
+      "tag": "0002_show_like_counts",
+      "breakpoints": true
     }
   ]
 }

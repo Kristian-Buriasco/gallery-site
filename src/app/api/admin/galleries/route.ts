@@ -51,6 +51,7 @@ export async function POST(req: Request) {
     'downloadEnabled',
     'selectionExportEnabled',
     'published',
+    'showLikeCounts',
   ] as const) {
     if (typeof body[key] === 'boolean') gallery[key] = body[key];
   }
