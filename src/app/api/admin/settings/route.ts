@@ -10,6 +10,7 @@ export async function GET() {
   return json({
     aboutContent: getSetting('aboutContent') ?? '',
     contactContent: getSetting('contactContent') ?? '',
+    analyticsHeadHtml: getSetting('analytics_head_html') ?? '',
     hasWatermark: fs.existsSync(watermarkPath()),
   });
 }
@@ -46,6 +47,9 @@ export async function POST(req: Request) {
   }
   if (typeof body.contactContent === 'string') {
     setSetting('contactContent', body.contactContent);
+  }
+  if (typeof body.analyticsHeadHtml === 'string') {
+    setSetting('analytics_head_html', body.analyticsHeadHtml);
   }
   return json({ ok: true });
 }

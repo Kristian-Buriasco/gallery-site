@@ -1,6 +1,6 @@
 import { eq } from 'drizzle-orm';
 import { getDb, schema } from '@/db';
-import { canViewGallery } from '@/lib/gallery-auth';
+import { hasGalleryAccess, isAdmin } from '@/lib/session';
 import { thumbPath, webPath } from '@/lib/paths';
 import { streamFileResponse } from '@/lib/stream';
 
@@ -27,8 +27,17 @@ export async function GET(req: Request, { params }: Params) {
     .get();
   if (!gallery) return new Response('Not found', { status: 404 });
 
-  if (!(await canViewGallery(gallery))) {
-    return new Response('Forbidden', { status: 403 });
+  if (!(await isAdmin())) {
+    // Unpublished must be indistinguishable from nonexistent (no existence
+    // oracle); 403 is reserved for published-but-locked galleries.
+    if (!gallery.published) return new Response('Not found', { status: 404 });
+    if (
+      gallery.type === 'client' &&
+      gallery.passwordHash &&
+      !(await hasGalleryAccess(gallery.id))
+    ) {
+      return new Response('Forbidden', { status: 403 });
+    }
   }
 
   const filePath =

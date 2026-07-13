@@ -4,6 +4,7 @@ import { getDb, schema } from '@/db';
 import SiteHeader from '@/components/SiteHeader';
 import PortfolioGrid from '@/components/PortfolioGrid';
 import { getReadyPhotos } from '@/lib/public-data';
+import { recordGalleryView } from '@/lib/views';
 
 export const dynamic = 'force-dynamic';
 
@@ -21,6 +22,8 @@ export default async function PortfolioGalleryPage({
     )
     .get();
   if (!gallery || !gallery.published) notFound();
+
+  await recordGalleryView(gallery.id, null);
 
   const photos = getReadyPhotos(gallery.id).map((p) => ({
     id: p.id,
@@ -41,7 +44,7 @@ export default async function PortfolioGalleryPage({
             No photos yet.
           </p>
         ) : (
-          <PortfolioGrid photos={photos} />
+          <PortfolioGrid photos={photos} slug={gallery.slug} />
         )}
       </main>
     </div>

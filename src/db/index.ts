@@ -4,7 +4,7 @@ import Database from 'better-sqlite3';
 import { drizzle, type BetterSQLite3Database } from 'drizzle-orm/better-sqlite3';
 import { migrate } from 'drizzle-orm/better-sqlite3/migrator';
 import * as schema from './schema';
-import { DATA_DIR } from '@/lib/env';
+import { DATA_DIR, sessionSecret } from '@/lib/env';
 
 export type Db = BetterSQLite3Database<typeof schema>;
 
@@ -25,6 +25,8 @@ function resolveMigrationsFolder(): string {
 
 export function getDb(): Db {
   if (globalForDb.__galleryDb) return globalForDb.__galleryDb;
+
+  sessionSecret();
 
   fs.mkdirSync(DATA_DIR, { recursive: true });
   const sqlite = new Database(path.join(DATA_DIR, 'gallery.db'));

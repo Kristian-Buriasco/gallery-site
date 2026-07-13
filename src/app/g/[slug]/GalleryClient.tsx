@@ -152,7 +152,7 @@ export default function GalleryClient({
                 <div key={p.id} className="group relative">
                   <button
                     type="button"
-                    onClick={() => setLightbox(photos.indexOf(p))}
+                    onClick={() => setLightbox(visible.indexOf(p))}
                     className="block w-full cursor-zoom-in"
                   >
                     {/* eslint-disable-next-line @next/next/no-img-element */}
@@ -186,10 +186,11 @@ export default function GalleryClient({
         </main>
       )}
 
-      {lightbox !== null && (
+      {lightbox !== null && visible.length > 0 && (
         <Lightbox
-          photos={photos}
-          index={lightbox}
+          // Navigate within the currently visible (possibly filtered) set.
+          photos={visible}
+          index={Math.min(lightbox, visible.length - 1)}
           onClose={() => setLightbox(null)}
           onNavigate={setLightbox}
           showFilename

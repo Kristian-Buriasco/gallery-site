@@ -1,5 +1,8 @@
 const WINDOW_MS = 15 * 60 * 1000;
-const MAX_FAILURES = 10;
+const MAX_FAILURES_PER_IP = 10;
+// Ceiling across all IPs per endpoint, so spoofed X-Forwarded-For values
+// (fresh fake IP per request) still trip a limit.
+const MAX_FAILURES_GLOBAL = 100;
 
 type Entry = { failures: number[] };
 
@@ -12,28 +15,52 @@ function prune(entry: Entry, now: number) {
   entry.failures = entry.failures.filter((t) => now - t < WINDOW_MS);
 }
 
-/** True if this IP has exhausted its password attempts (should get a 429). */
-export function isRateLimited(ip: string): boolean {
-  const entry = store.get(ip);
-  if (!entry) return false;
+function bucketSize(key: string): number {
+  const entry = store.get(key);
+  if (!entry) return 0;
   prune(entry, Date.now());
-  return entry.failures.length >= MAX_FAILURES;
+  return entry.failures.length;
 }
 
-export function recordFailure(ip: string): void {
+function record(key: string) {
   const now = Date.now();
-  const entry = store.get(ip) ?? { failures: [] };
+  const entry = store.get(key) ?? { failures: [] };
   prune(entry, now);
   entry.failures.push(now);
-  store.set(ip, entry);
+  store.set(key, entry);
 }
 
-export function clearFailures(ip: string): void {
-  store.delete(ip);
+/**
+ * True if this IP (or the endpoint globally) has exhausted its password
+ * attempts and should get a 429. `scope` identifies the endpoint.
+ */
+export function isRateLimited(scope: string, ip: string): boolean {
+  return (
+    bucketSize(`${scope}:ip:${ip}`) >= MAX_FAILURES_PER_IP ||
+    bucketSize(`${scope}:global`) >= MAX_FAILURES_GLOBAL
+  );
+}
+
+export function recordFailure(scope: string, ip: string): void {
+  record(`${scope}:ip:${ip}`);
+  record(`${scope}:global`);
+}
+
+export function clearFailures(scope: string, ip: string): void {
+  // Only the per-IP bucket; the global ceiling keeps its history.
+  store.delete(`${scope}:ip:${ip}`);
 }
 
 export function ipFromRequest(req: Request): string {
-  const fwd = req.headers.get('x-forwarded-for');
-  if (fwd) return fwd.split(',')[0].trim();
+  const xff = req.headers.get('x-forwarded-for');
+  if (xff) {
+    // The trusted reverse proxy APPENDS the real client IP as the last
+    // entry; earlier entries are attacker-controllable.
+    const parts = xff
+      .split(',')
+      .map((s) => s.trim())
+      .filter(Boolean);
+    return parts[parts.length - 1] ?? 'unknown';
+  }
   return req.headers.get('x-real-ip') ?? 'unknown';
 }

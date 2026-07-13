@@ -91,6 +91,32 @@ export const selections = sqliteTable(
   (t) => [primaryKey({ columns: [t.photoId, t.visitorId] })],
 );
 
+export const likes = sqliteTable(
+  'likes',
+  {
+    photoId: text('photo_id')
+      .notNull()
+      .references(() => photos.id, { onDelete: 'cascade' }),
+    likerToken: text('liker_token').notNull(),
+    createdAt: integer('created_at')
+      .notNull()
+      .$defaultFn(() => Date.now()),
+  },
+  (t) => [primaryKey({ columns: [t.photoId, t.likerToken] })],
+);
+
+export const viewEvents = sqliteTable('view_events', {
+  id: integer('id').primaryKey({ autoIncrement: true }),
+  galleryId: text('gallery_id')
+    .notNull()
+    .references(() => galleries.id, { onDelete: 'cascade' }),
+  visitorId: text('visitor_id'),
+  kind: text('kind').notNull(),
+  createdAt: integer('created_at')
+    .notNull()
+    .$defaultFn(() => Date.now()),
+});
+
 export const settings = sqliteTable('settings', {
   key: text('key').primaryKey(),
   value: text('value').notNull(),

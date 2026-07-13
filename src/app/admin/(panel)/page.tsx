@@ -1,13 +1,19 @@
 import Link from 'next/link';
+import { redirect } from 'next/navigation';
 import { asc, eq, sql } from 'drizzle-orm';
 import { getDb, schema } from '@/db';
 import { dirSizeBytes, formatBytes, volumeUsage } from '@/lib/disk';
 import { galleryDir } from '@/lib/paths';
+import { isAdmin } from '@/lib/session';
 import CreateGalleryButton from './CreateGalleryButton';
 
 export const dynamic = 'force-dynamic';
 
-export default function AdminDashboard() {
+export default async function AdminDashboard() {
+  // Per-page auth check: layouts don't re-run on soft navigation and render
+  // in parallel with pages, so the layout check alone is not sufficient.
+  if (!(await isAdmin())) redirect('/admin/login');
+
   const db = getDb();
   const galleries = db
     .select()

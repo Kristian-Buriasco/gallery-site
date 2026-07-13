@@ -6,15 +6,20 @@ import { useRouter } from 'next/navigation';
 export default function SettingsForm({
   initialAbout,
   initialContact,
+  initialAnalyticsHeadHtml,
   hasWatermark,
 }: {
   initialAbout: string;
   initialContact: string;
+  initialAnalyticsHeadHtml: string;
   hasWatermark: boolean;
 }) {
   const router = useRouter();
   const [about, setAbout] = useState(initialAbout);
   const [contact, setContact] = useState(initialContact);
+  const [analyticsHeadHtml, setAnalyticsHeadHtml] = useState(
+    initialAnalyticsHeadHtml,
+  );
   const [saving, setSaving] = useState(false);
   const [saved, setSaved] = useState(false);
   const [wmBusy, setWmBusy] = useState(false);
@@ -26,7 +31,11 @@ export default function SettingsForm({
     const res = await fetch('/api/admin/settings', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ aboutContent: about, contactContent: contact }),
+      body: JSON.stringify({
+        aboutContent: about,
+        contactContent: contact,
+        analyticsHeadHtml,
+      }),
     });
     setSaving(false);
     if (res.ok) {
@@ -140,6 +149,32 @@ export default function SettingsForm({
           className="border border-neutral-900 px-6 py-2 text-xs tracking-widest uppercase transition-colors hover:bg-neutral-900 hover:text-white disabled:opacity-40 dark:border-neutral-100 dark:hover:bg-neutral-100 dark:hover:text-black"
         >
           {saving ? 'Saving…' : saved ? 'Saved' : 'Save'}
+        </button>
+      </section>
+
+      <section className="space-y-4">
+        <h2 className="text-sm font-medium tracking-widest uppercase">
+          Analytics snippet
+        </h2>
+        <p className="text-xs text-neutral-500 dark:text-neutral-400">
+          Optional HTML pasted into the public site&apos;s &lt;head&gt; (e.g. a
+          future GA4 or Umami script). Executed as-is on public pages only —
+          never on /admin. Leave empty to disable.
+        </p>
+        <textarea
+          value={analyticsHeadHtml}
+          onChange={(e) => setAnalyticsHeadHtml(e.target.value)}
+          rows={6}
+          className={textareaClass}
+          placeholder='<script async src="https://…"></script>'
+        />
+        <button
+          type="button"
+          onClick={saveText}
+          disabled={saving}
+          className="border border-neutral-900 px-6 py-2 text-xs tracking-widest uppercase transition-colors hover:bg-neutral-900 hover:text-white disabled:opacity-40 dark:border-neutral-100 dark:hover:bg-neutral-100 dark:hover:text-black"
+        >
+          {saving ? 'Saving…' : saved ? 'Saved' : 'Save analytics snippet'}
         </button>
       </section>
     </div>

@@ -1,14 +1,15 @@
 import { getIronSession, type IronSession, type SessionOptions } from 'iron-session';
 import { cookies } from 'next/headers';
-import { SESSION_SECRET } from './env';
+import { sessionSecret } from './env';
 
 const WEEK_SECONDS = 7 * 24 * 60 * 60;
 
 const baseCookieOptions = {
   httpOnly: true,
   sameSite: 'lax' as const,
-  // TLS is terminated upstream; the app itself serves plain HTTP.
-  secure: false,
+  // TLS is terminated upstream, but `secure` governs browser behavior and
+  // production browsers only ever see HTTPS. Plain http stays allowed in dev.
+  secure: process.env.NODE_ENV === 'production',
   path: '/',
 };
 
@@ -28,7 +29,7 @@ export interface VisitorSessionData {
 function options(cookieName: string, ttl: number): SessionOptions {
   return {
     cookieName,
-    password: SESSION_SECRET,
+    password: sessionSecret(),
     ttl,
     cookieOptions: { ...baseCookieOptions, maxAge: ttl },
   };

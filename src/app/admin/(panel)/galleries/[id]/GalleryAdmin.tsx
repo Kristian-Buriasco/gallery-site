@@ -20,6 +20,8 @@ interface Props {
   initialPhotos: Photo[];
   visitors: VisitorInfo[];
   selections: SelectionRow[];
+  likeCounts: Record<string, number>;
+  viewStats: { total: number; last7: number; lastAt: number | null };
   sizeBytes: number;
   shareUrl: string;
 }
@@ -46,6 +48,8 @@ export default function GalleryAdmin({
   initialPhotos,
   visitors,
   selections,
+  likeCounts,
+  viewStats,
   sizeBytes,
   shareUrl,
 }: Props) {
@@ -97,7 +101,7 @@ export default function GalleryAdmin({
     done: number;
     currentName: string | null;
     currentPct: number;
-    failures: File[];
+    failures: { file: File; reason: string }[];
   }>({ total: 0, done: 0, currentName: null, currentPct: 0, failures: [] });
   const uploading = uploadState.total > 0 && uploadState.done < uploadState.total;
   const fileInputRef = useRef<HTMLInputElement>(null);
@@ -129,21 +133,28 @@ export default function GalleryAdmin({
 
   const startUpload = useCallback(
     async (files: File[]) => {
+      if (files.length === 0) return;
+      const unsupported = files.filter(
+        (f) => f.type !== 'image/jpeg' && f.type !== 'image/png',
+      );
       const accepted = files.filter(
         (f) => f.type === 'image/jpeg' || f.type === 'image/png',
       );
-      if (accepted.length === 0) return;
       setUploadState({
-        total: accepted.length,
-        done: 0,
+        total: files.length,
+        done: unsupported.length,
         currentName: null,
         currentPct: 0,
-        failures: [],
+        failures: unsupported.map((file) => ({
+          file,
+          reason: 'unsupported type',
+        })),
       });
       for (const file of accepted) {
         setUploadState((s) => ({ ...s, currentName: file.name, currentPct: 0 }));
         let ok = false;
-        for (let attempt = 0; attempt < 3 && !ok; attempt++) {
+        // 1 initial attempt + up to 3 retries with exponential backoff.
+        for (let attempt = 0; attempt < 4 && !ok; attempt++) {
           if (attempt > 0) {
             await new Promise((r) => setTimeout(r, 1000 * 2 ** attempt));
           }
@@ -158,7 +169,9 @@ export default function GalleryAdmin({
         setUploadState((s) => ({
           ...s,
           done: s.done + 1,
-          failures: ok ? s.failures : [...s.failures, file],
+          failures: ok
+            ? s.failures
+            : [...s.failures, { file, reason: 'upload failed' }],
         }));
       }
     },
@@ -248,9 +261,21 @@ export default function GalleryAdmin({
     return photos.filter((p) => ids.has(p.id)).map((p) => p.filename);
   }, [selections, exportVisitor, photos]);
 
-  const gridPhotos = selectedOnly
+  // ---- likes (portfolio) ----
+  const [sortByLikes, setSortByLikes] = useState(false);
+  const totalLikes = useMemo(
+    () => Object.values(likeCounts).reduce((a, b) => a + b, 0),
+    [likeCounts],
+  );
+
+  let gridPhotos = selectedOnly
     ? photos.filter((p) => selectionsByPhoto.has(p.id))
     : photos;
+  if (sortByLikes) {
+    gridPhotos = [...gridPhotos].sort(
+      (a, b) => (likeCounts[b.id] ?? 0) - (likeCounts[a.id] ?? 0),
+    );
+  }
 
   const inputClass =
     'w-full border-b border-neutral-300 bg-transparent py-1.5 text-sm outline-none focus:border-neutral-900 dark:border-neutral-700 dark:focus:border-neutral-100';
@@ -264,8 +289,21 @@ export default function GalleryAdmin({
           <p className="mt-1 text-xs text-neutral-500 dark:text-neutral-400">
             {isClientGallery ? 'Client gallery' : 'Portfolio gallery'} ·{' '}
             {photos.length} photos · {formatBytes(sizeBytes)}
+            {!isClientGallery && totalLikes > 0 && ` · ${totalLikes} likes`}
             {saving && ' · saving…'}
             {savedFlash && !saving && ' · saved'}
+          </p>
+          <p className="mt-0.5 text-xs text-neutral-500 dark:text-neutral-400">
+            {viewStats.total} view{viewStats.total === 1 ? '' : 's'} ·{' '}
+            {viewStats.last7} in last 7 days
+            {viewStats.lastAt
+              ? ` · last viewed ${new Date(viewStats.lastAt).toLocaleString('en-GB', {
+                  day: 'numeric',
+                  month: 'short',
+                  hour: '2-digit',
+                  minute: '2-digit',
+                })}`
+              : ' · never viewed'}
           </p>
         </div>
         <div className="flex items-center gap-2 text-xs">
@@ -440,14 +478,25 @@ export default function GalleryAdmin({
             </div>
             {!uploading && uploadState.failures.length > 0 && (
               <div className="text-red-600 dark:text-red-400">
-                Failed: {uploadState.failures.map((f) => f.name).join(', ')}{' '}
-                <button
-                  type="button"
-                  onClick={() => startUpload(uploadState.failures)}
-                  className="underline underline-offset-2"
-                >
-                  Retry failed
-                </button>
+                Failed:{' '}
+                {uploadState.failures
+                  .map((f) => `${f.file.name} (${f.reason})`)
+                  .join(', ')}{' '}
+                {uploadState.failures.some((f) => f.reason !== 'unsupported type') && (
+                  <button
+                    type="button"
+                    onClick={() =>
+                      startUpload(
+                        uploadState.failures
+                          .filter((f) => f.reason !== 'unsupported type')
+                          .map((f) => f.file),
+                      )
+                    }
+                    className="underline underline-offset-2"
+                  >
+                    Retry failed
+                  </button>
+                )}
               </div>
             )}
           </div>
@@ -465,16 +514,28 @@ export default function GalleryAdmin({
           <h2 className="text-xs tracking-widest text-neutral-500 uppercase dark:text-neutral-400">
             Photos
           </h2>
-          {isClientGallery && selections.length > 0 && (
-            <label className="flex items-center gap-2 text-xs text-neutral-600 dark:text-neutral-300">
-              <input
-                type="checkbox"
-                checked={selectedOnly}
-                onChange={(e) => setSelectedOnly(e.target.checked)}
-              />
-              Selected only
-            </label>
-          )}
+          <div className="flex items-center gap-4">
+            {!isClientGallery && totalLikes > 0 && (
+              <label className="flex items-center gap-2 text-xs text-neutral-600 dark:text-neutral-300">
+                <input
+                  type="checkbox"
+                  checked={sortByLikes}
+                  onChange={(e) => setSortByLikes(e.target.checked)}
+                />
+                Sort by likes
+              </label>
+            )}
+            {isClientGallery && selections.length > 0 && (
+              <label className="flex items-center gap-2 text-xs text-neutral-600 dark:text-neutral-300">
+                <input
+                  type="checkbox"
+                  checked={selectedOnly}
+                  onChange={(e) => setSelectedOnly(e.target.checked)}
+                />
+                Selected only
+              </label>
+            )}
+          </div>
         </div>
         {gridPhotos.length === 0 ? (
           <p className="py-10 text-center text-sm text-neutral-500 dark:text-neutral-400">
@@ -484,14 +545,16 @@ export default function GalleryAdmin({
           <div className="grid grid-cols-3 gap-2 sm:grid-cols-4 lg:grid-cols-6">
             {gridPhotos.map((p, i) => {
               const selCount = selectionsByPhoto.get(p.id)?.length ?? 0;
+              const likeCount = likeCounts[p.id] ?? 0;
               return (
                 <div
                   key={p.id}
-                  draggable={!selectedOnly}
+                  draggable={!selectedOnly && !sortByLikes}
                   onDragStart={() => (dragIndex.current = i)}
                   onDragOver={(e) => e.preventDefault()}
                   onDrop={() => {
-                    if (selectedOnly || dragIndex.current === null) return;
+                    if (selectedOnly || sortByLikes || dragIndex.current === null)
+                      return;
                     const from = dragIndex.current;
                     dragIndex.current = null;
                     if (from === i) return;
@@ -523,10 +586,10 @@ export default function GalleryAdmin({
                       COVER
                     </span>
                   )}
-                  {selCount > 0 && (
+                  {(isClientGallery ? selCount : likeCount) > 0 && (
                     <span className="absolute top-1 right-1 flex items-center gap-0.5 rounded bg-black/70 px-1.5 py-0.5 text-[9px] text-white">
                       <HeartIcon filled className="h-2.5 w-2.5" />
-                      {selCount}
+                      {isClientGallery ? selCount : likeCount}
                     </span>
                   )}
                   <div className="absolute inset-x-0 bottom-0 flex justify-between gap-1 bg-black/60 p-1 opacity-0 transition-opacity group-hover:opacity-100">

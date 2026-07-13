@@ -12,10 +12,12 @@ import { getGalleryAccessSession } from '@/lib/session';
 
 type Params = { params: Promise<{ slug: string }> };
 
+const RL_SCOPE = 'gallery-unlock';
+
 export async function POST(req: Request, { params }: Params) {
   const { slug } = await params;
   const ip = ipFromRequest(req);
-  if (isRateLimited(ip)) {
+  if (isRateLimited(RL_SCOPE, ip)) {
     return errorJson('Too many attempts. Try again later.', 429);
   }
 
@@ -40,11 +42,11 @@ export async function POST(req: Request, { params }: Params) {
     typeof password !== 'string' ||
     !(await bcrypt.compare(password, gallery.passwordHash))
   ) {
-    recordFailure(ip);
+    recordFailure(RL_SCOPE, ip);
     return errorJson('Incorrect password', 401);
   }
 
-  clearFailures(ip);
+  clearFailures(RL_SCOPE, ip);
   const session = await getGalleryAccessSession();
   const unlocked = new Set(session.unlocked ?? []);
   unlocked.add(gallery.id);

@@ -3,6 +3,7 @@ import { and, eq } from 'drizzle-orm';
 import { getDb, schema } from '@/db';
 import { getVisitorSession, hasGalleryAccess, isAdmin } from '@/lib/session';
 import { getReadyPhotos } from '@/lib/public-data';
+import { recordGalleryView } from '@/lib/views';
 import PasswordGate from './PasswordGate';
 import GalleryClient from './GalleryClient';
 
@@ -26,6 +27,26 @@ export default async function ClientGalleryPage({
   const admin = await isAdmin();
   // Unknown or unpublished => 404, don't reveal existence (admin may preview).
   if (!gallery || (!gallery.published && !admin)) notFound();
+
+  // Count a view for published galleries (debounced server-side), including
+  // password-gate visits — the client reached the gallery URL.
+  if (gallery.published) {
+    const visitorSession = await getVisitorSession(gallery.id);
+    let visitorId: string | null = null;
+    if (visitorSession.token) {
+      const visitor = db
+        .select({ id: schema.visitors.id })
+        .from(schema.visitors)
+        .where(eq(schema.visitors.sessionToken, visitorSession.token))
+        .get();
+      if (visitor && visitor.id) visitorId = visitor.id;
+    }
+    await recordGalleryView(
+      gallery.id,
+      visitorId,
+      visitorSession.token ?? null,
+    );
+  }
 
   if (gallery.passwordHash && !admin && !(await hasGalleryAccess(gallery.id))) {
     return <PasswordGate slug={slug} title={gallery.title} />;

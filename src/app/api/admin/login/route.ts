@@ -1,5 +1,5 @@
 import bcrypt from 'bcryptjs';
-import { ADMIN_PASSWORD_HASH } from '@/lib/env';
+import { adminPasswordHash } from '@/lib/env';
 import { getAdminSession } from '@/lib/session';
 import {
   clearFailures,
@@ -9,9 +9,11 @@ import {
 } from '@/lib/rate-limit';
 import { errorJson, json } from '@/lib/api';
 
+const RL_SCOPE = 'admin-login';
+
 export async function POST(req: Request) {
   const ip = ipFromRequest(req);
-  if (isRateLimited(ip)) {
+  if (isRateLimited(RL_SCOPE, ip)) {
     return errorJson('Too many attempts. Try again later.', 429);
   }
 
@@ -21,18 +23,18 @@ export async function POST(req: Request) {
   } catch {
     return errorJson('Invalid request', 400);
   }
-  if (typeof password !== 'string' || !ADMIN_PASSWORD_HASH) {
-    recordFailure(ip);
+  if (typeof password !== 'string' || !adminPasswordHash()) {
+    recordFailure(RL_SCOPE, ip);
     return errorJson('Invalid password', 401);
   }
 
-  const ok = await bcrypt.compare(password, ADMIN_PASSWORD_HASH);
+  const ok = await bcrypt.compare(password, adminPasswordHash());
   if (!ok) {
-    recordFailure(ip);
+    recordFailure(RL_SCOPE, ip);
     return errorJson('Invalid password', 401);
   }
 
-  clearFailures(ip);
+  clearFailures(RL_SCOPE, ip);
   const session = await getAdminSession();
   session.isAdmin = true;
   await session.save();

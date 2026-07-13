@@ -1,8 +1,7 @@
 import { eq } from 'drizzle-orm';
 import { getDb, schema } from '@/db';
-import { canViewGallery } from '@/lib/gallery-auth';
 import { originalPath } from '@/lib/paths';
-import { isAdmin } from '@/lib/session';
+import { hasGalleryAccess, isAdmin } from '@/lib/session';
 import { contentTypeForFilename, streamFileResponse } from '@/lib/stream';
 
 type Params = { params: Promise<{ photoId: string }> };
@@ -25,9 +24,14 @@ export async function GET(req: Request, { params }: Params) {
     .get();
   if (!gallery) return new Response('Not found', { status: 404 });
 
-  const admin = await isAdmin();
-  if (!admin) {
-    if (!(await canViewGallery(gallery))) {
+  if (!(await isAdmin())) {
+    // Unpublished must be indistinguishable from nonexistent.
+    if (!gallery.published) return new Response('Not found', { status: 404 });
+    if (
+      gallery.type === 'client' &&
+      gallery.passwordHash &&
+      !(await hasGalleryAccess(gallery.id))
+    ) {
       return new Response('Forbidden', { status: 403 });
     }
     // Originals of portfolio photos are never downloadable publicly,

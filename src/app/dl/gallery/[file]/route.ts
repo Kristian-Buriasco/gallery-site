@@ -3,9 +3,8 @@ import { PassThrough, Readable } from 'node:stream';
 import archiver from 'archiver';
 import { asc, and, eq } from 'drizzle-orm';
 import { getDb, schema } from '@/db';
-import { canViewGallery } from '@/lib/gallery-auth';
 import { originalPath } from '@/lib/paths';
-import { isAdmin } from '@/lib/session';
+import { hasGalleryAccess, isAdmin } from '@/lib/session';
 
 type Params = { params: Promise<{ file: string }> };
 
@@ -31,9 +30,14 @@ export async function GET(_req: Request, { params }: Params) {
     .get();
   if (!gallery) return new Response('Not found', { status: 404 });
 
-  const admin = await isAdmin();
-  if (!admin) {
-    if (!(await canViewGallery(gallery))) {
+  if (!(await isAdmin())) {
+    // Unpublished must be indistinguishable from nonexistent.
+    if (!gallery.published) return new Response('Not found', { status: 404 });
+    if (
+      gallery.type === 'client' &&
+      gallery.passwordHash &&
+      !(await hasGalleryAccess(gallery.id))
+    ) {
       return new Response('Forbidden', { status: 403 });
     }
     if (gallery.type === 'portfolio' || !gallery.downloadEnabled) {
@@ -56,18 +60,28 @@ export async function GET(_req: Request, { params }: Params) {
   const out = new PassThrough();
   archive.pipe(out);
 
-  archive.on('error', (err) => {
-    console.error('[zip] archive error:', err);
+  // Every failure path must terminate the response cleanly instead of
+  // letting an 'error' event crash the (single) Node process.
+  const abort = (err: Error) => {
+    console.error('[zip] stream error:', err.message);
+    archive.destroy();
     out.destroy(err);
+  };
+  archive.on('error', abort);
+  archive.on('warning', (err) => console.warn('[zip] warning:', err.message));
+  out.on('error', () => {
+    /* consumer gone or aborted; archive already destroyed via abort() */
   });
 
   for (const photo of photos) {
     const p = originalPath(photo.galleryId, photo.filename);
     if (fs.existsSync(p)) {
-      archive.append(fs.createReadStream(p), { name: photo.filename });
+      // archive.file() lazily opens the file and routes open/read errors
+      // through archiver's own error handling (caught by abort above).
+      archive.file(p, { name: photo.filename });
     }
   }
-  void archive.finalize();
+  archive.finalize().catch(abort);
 
   return new Response(Readable.toWeb(out) as ReadableStream, {
     status: 200,

@@ -38,5 +38,5 @@ export function thumbPath(galleryId: string, filename: string): string {
 }
 
 export function watermarkPath(): string {
-  return path.join(DATA_DIR, 'watermark.png');
+  return assertInsideDataDir(path.join(DATA_DIR, 'watermark.png'));
 }

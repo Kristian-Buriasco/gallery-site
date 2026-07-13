@@ -1,3 +1,4 @@
+import bcrypt from 'bcryptjs';
 import { nanoid } from 'nanoid';
 import { sql } from 'drizzle-orm';
 import { getDb, schema } from '@/db';
@@ -7,7 +8,7 @@ export async function POST(req: Request) {
   const denied = await requireAdmin();
   if (denied) return denied;
 
-  let body: { title?: unknown; type?: unknown };
+  let body: Record<string, unknown>;
   try {
     body = await req.json();
   } catch {
@@ -25,13 +26,34 @@ export async function POST(req: Request) {
       .from(schema.galleries)
       .get()?.m ?? 0;
 
-  const gallery = {
+  // Accept the same settable fields as PATCH at creation time.
+  const gallery: typeof schema.galleries.$inferInsert = {
     id: nanoid(),
     slug: nanoid(14),
     type: type as 'client' | 'portfolio',
     title,
-    sortOrder: maxOrder + 1,
+    sortOrder:
+      typeof body.sortOrder === 'number' ? body.sortOrder : maxOrder + 1,
   };
+  if (typeof body.eventDate === 'number') gallery.eventDate = body.eventDate;
+  if (typeof body.password === 'string' && body.password.length > 0) {
+    gallery.passwordHash = await bcrypt.hash(body.password, 10);
+  }
+  if (
+    body.clientInfoMode === 'off' ||
+    body.clientInfoMode === 'optional' ||
+    body.clientInfoMode === 'required'
+  ) {
+    gallery.clientInfoMode = body.clientInfoMode;
+  }
+  for (const key of [
+    'watermarkEnabled',
+    'downloadEnabled',
+    'selectionExportEnabled',
+    'published',
+  ] as const) {
+    if (typeof body[key] === 'boolean') gallery[key] = body[key];
+  }
   db.insert(schema.galleries).values(gallery).run();
 
   const row = db
