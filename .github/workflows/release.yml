@@ -40,7 +40,8 @@ jobs:
       - name: Compute tags
         id: tags
         run: |
-          repo="${{ github.repository }}"
+          # GHCR requires a lowercase repository path.
+          repo="$(echo '${{ github.repository }}' | tr '[:upper:]' '[:lower:]')"
           ver="${{ steps.ver.outputs.version }}"
           tags="ghcr.io/${repo}:${ver},ghcr.io/${repo}:latest"
           if [ "${{ vars.PUBLISH_DOCKERHUB }}" = "true" ]; then
