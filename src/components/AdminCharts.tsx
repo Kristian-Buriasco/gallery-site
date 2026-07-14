@@ -1,6 +1,7 @@
 'use client';
 
-type Point = { x: number; y: number; label?: string };
+type InputPoint = { x: number; y: number; label?: string };
+type Point = { x: number; y: number; value: number; label?: string };
 
 const EMPTY = (
   <p className="flex h-full min-h-[80px] items-center justify-center text-xs text-neutral-400 dark:text-neutral-600">
@@ -28,7 +29,7 @@ function ChartFrame({
 }
 
 function scalePoints(
-  data: { x: number; y: number }[],
+  data: InputPoint[],
   width: number,
   height: number,
   pad: number,
@@ -49,6 +50,8 @@ function scalePoints(
         ? width / 2
         : pad + ((d.x - minX) / rx) * (width - pad * 2),
     y: height - pad - ((d.y - minY) / ry) * (height - pad * 2),
+    value: d.y,
+    label: d.label,
   }));
 }
 
@@ -58,7 +61,7 @@ export function LineChart({
   height = 120,
   title,
 }: {
-  data: { x: number; y: number }[];
+  data: InputPoint[];
   width?: number;
   height?: number;
   title?: string;
@@ -101,16 +104,37 @@ export function LineChart({
             opacity="0.85"
           />
         )}
-        {/* always mark the points, so a single data point is visible */}
+        {/* always mark the points, so a single data point is visible.
+            each carries a native <title> tooltip; sparse charts also
+            label the value inline so it's readable without hovering. */}
         {pts.map((p, i) => (
-          <circle
-            key={i}
-            cx={p.x}
-            cy={p.y}
-            r={pts.length === 1 ? 3.5 : 2}
-            fill="currentColor"
-            opacity="0.85"
-          />
+          <g key={i}>
+            {pts.length <= 12 && (
+              <text
+                x={p.x}
+                y={Math.max(9, p.y - 6)}
+                textAnchor="middle"
+                className="fill-neutral-500 text-[9px]"
+              >
+                {p.value}
+              </text>
+            )}
+            {/* generous invisible hit area so hover is easy to trigger */}
+            <circle cx={p.x} cy={p.y} r={8} fill="transparent">
+              <title>
+                {p.label ? `${p.label}: ` : ''}
+                {p.value} view{p.value === 1 ? '' : 's'}
+              </title>
+            </circle>
+            <circle
+              cx={p.x}
+              cy={p.y}
+              r={pts.length === 1 ? 3.5 : 2}
+              fill="currentColor"
+              opacity="0.85"
+              pointerEvents="none"
+            />
+          </g>
         ))}
       </svg>
     );

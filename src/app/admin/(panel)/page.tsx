@@ -44,7 +44,11 @@ export default async function AdminDashboard() {
     .where(gte(schema.viewEvents.createdAt, thirtyDaysAgo))
     .groupBy(sql`date(${schema.viewEvents.createdAt} / 1000, 'unixepoch')`)
     .all();
-  const viewsOverTime = viewRows.map((r, i) => ({ x: i, y: r.c }));
+  const viewsOverTime = viewRows.map((r, i) => ({
+    x: i,
+    y: r.c,
+    label: String(r.day),
+  }));
 
   const galleryViews = galleries.map((g) => ({
     label: g.title.slice(0, 8),
