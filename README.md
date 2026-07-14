@@ -1,125 +1,115 @@
 # gallery-site
 
-Self-hosted photography portfolio + client proofing galleries (a Pic-Time
-replacement). Single Next.js 15 app: public portfolio site, private client
-galleries at unguessable URLs (optional password), and a single-user admin
-panel. SQLite + filesystem storage, no external services.
+Self-hosted photography **portfolio + client proofing galleries** — a
+Pic-Time replacement you own. One Next.js app: a public portfolio, private
+client galleries at unguessable URLs (optional per-gallery password), photo
+selections/favorites, comments, downloads (incl. streaming ZIPs), EXIF,
+tournament-style sections, and a single-admin panel with passkey login.
+SQLite + local filesystem. **No external services.**
 
-## Stack
+## Features
 
-- Next.js 15 (App Router, TypeScript, `output: 'standalone'`)
-- SQLite via Drizzle ORM + better-sqlite3 (WAL, migrations applied at boot)
-- Sharp for image derivatives (in-process queue, concurrency 1)
-- Tailwind CSS, iron-session cookies, archiver for streaming ZIPs
-- Only native modules: `sharp` and `better-sqlite3`
+- Public portfolio + private client galleries (unguessable slug, optional password)
+- Client proofing: favorites/selections, per-gallery selection limits, comments (moderated)
+- Downloads: per-photo, full-gallery ZIP, or favorites-only ZIP (streamed)
+- Sections (group photos by game/team/round), folder upload, drag-reorder & sort
+- Per-gallery watermark, EXIF display (GPS never stored), optional shoot location
+- Admin: passkeys (WebAuthn) + recovery codes + optional password, stats, bulk actions
+- Safe upgrades: DB is backed up before every migration; a failed migration aborts boot
+
+## Quick start (Docker)
+
+```bash
+git clone https://github.com/Kristian-Buriasco/gallery-site.git
+cd gallery-site
+
+export SESSION_SECRET=$(openssl rand -hex 32)
+export BASE_URL=https://gallery.example.com   # your real https origin
+
+docker compose up -d --build
+docker compose logs -f    # first run prints a temporary admin password
+```
+
+Open the site, log in at `/admin/login` with the printed password, then add a
+passkey under **Settings → Security**. Set `ADMIN_PASSWORD_HASH` (see below) to
+keep a stable password. Put a reverse proxy (Caddy, nginx, NPM) in front for
+HTTPS — passkeys require a secure origin.
+
+Prebuilt images: `ghcr.io/kristian-buriasco/gallery-site` (pin a version in
+production instead of `:latest`).
 
 ## Configuration
 
-Copy `.env.example` to `.env` and fill in:
+Copy `.env.example` to `.env` (or set these in the compose environment):
 
 | Var | Purpose |
 |---|---|
-| `PORT` | HTTP port (default 3200; TLS terminated upstream) |
-| `DATA_DIR` | Root of all runtime data (default `./data` in dev) |
-| `SESSION_SECRET` | 64 random chars for cookie encryption |
-| `ADMIN_PASSWORD_HASH` | bcrypt hash — generate with `node scripts/hash-password.mjs 'mypassword'` |
-| `NEXT_PUBLIC_SITE_NAME` | Site name (baked in at build time) |
-| `BASE_URL` | Public base URL for share links and WebAuthn (must be the real https origin) |
+| `SESSION_SECRET` | **Required in prod.** Signs/encrypts cookies. `openssl rand -hex 32` |
+| `ADMIN_PASSWORD_HASH` | bcrypt hash. Empty → temp password printed on first run. `node scripts/hash-password.mjs 'pw'` |
+| `BASE_URL` | Public https origin (share links + WebAuthn). `https://gallery.example.com` |
+| `DATA_DIR` | Runtime data root (Docker volume, default `/data`) |
+| `PORT` | HTTP port (default `3200`; TLS terminated upstream) |
+| `NEXT_PUBLIC_SITE_NAME` | Site name in headers/titles |
 | `RP_ID` | Optional WebAuthn RP ID override (defaults to host of `BASE_URL`) |
+| `DISABLE_UPDATE_CHECK` | `1` to disable the daily GitHub release check |
 
-All photos and the SQLite DB live under `$DATA_DIR`:
+All photos and the SQLite DB live under `DATA_DIR`; nothing there is served
+statically — every image byte goes through an auth-checked handler.
 
 ```
-$DATA_DIR/
+DATA_DIR/
   gallery.db
+  backups/gallery-<timestamp>.db     # pre-migration snapshots
   photos/<galleryId>/{originals,web,thumb}/…
-  watermark.png
 ```
 
-Nothing under `$DATA_DIR` is ever served statically; every image byte goes
-through an auth-checked route handler.
+**Back up `DATA_DIR`** — it is your galleries and database.
+
+## Updating
+
+- **Docker:** `docker compose pull && docker compose up -d` (pin a version, or
+  use `:latest`). Migrations apply on boot after backing up the DB.
+- The admin panel shows a badge when a newer release exists (opt out with
+  `DISABLE_UPDATE_CHECK=1`).
+
+## Bare-metal (without Docker)
+
+```bash
+npm ci && npm run build
+# copy .next/standalone, .next/static, and drizzle/ to your host, then:
+SESSION_SECRET=… BASE_URL=… DATA_DIR=/var/lib/gallery/data node server.js
+```
+
+Templates in [`deploy/`](deploy): a `systemd` unit (`gallery.service`) and an
+`update.sh` helper (backs up the DB, swaps files, restarts). Native modules
+(`sharp`, `better-sqlite3`) must be built for the host platform (`npm rebuild`
+there). On older toolchains that can't compile `better-sqlite3` v12 (needs
+C++20), pin `better-sqlite3@11.10.0`.
 
 ## Development
 
 ```bash
-npm install
-npm run dev          # http://localhost:3200
+npm ci
+cp .env.example .env      # set SESSION_SECRET
+npm run dev               # http://localhost:3200
 ```
 
-Other scripts: `npm run build`, `npm run lint`, `npm run typecheck`,
-`npm run db:generate` (regenerate Drizzle migrations after schema changes).
+See [CONTRIBUTING.md](CONTRIBUTING.md). Checks: `npm run typecheck`,
+`npm run lint`, `npm run build`.
 
-## Production build & deploy
+## Stack
 
-The production host (Intel Mac mini, macOS 10.13, 2 GB RAM, Node 20.19 via
-MacPorts) **cannot run `next build`**. Build on a dev machine and copy the
-standalone bundle over:
+Next.js 15 (App Router, standalone) · SQLite + Drizzle + better-sqlite3 (WAL,
+migrations at boot) · sharp (in-process queue) · Tailwind · iron-session ·
+`@simplewebauthn` · archiver. Only native modules: `sharp`, `better-sqlite3`.
 
-```bash
-npm install
-npm run build
+## Security
 
-# Assemble the runnable bundle (standalone output does not include these):
-cp -r .next/static .next/standalone/.next/static
-cp -r public .next/standalone/public   # if a public/ directory exists
-```
-
-Copy `.next/standalone/` to the host (e.g. `/opt/sites/gallery/app`), then on
-the host:
-
-```bash
-cd /opt/sites/gallery/app
-
-# Native modules must match the host platform (darwin-x64, Node 20).
-# The bundle built on an arm64 Mac ships arm64 binaries — rebuild/replace them:
-npm rebuild better-sqlite3 sharp
-# or: (cd node_modules/… ) reinstall with npm install --cpu=x64 --os=darwin sharp
-
-PORT=3200 \
-DATA_DIR=/opt/sites/gallery/data \
-SESSION_SECRET=… \
-ADMIN_PASSWORD_HASH=… \
-BASE_URL=https://gallery.kristianburiasco.it \
-node server.js
-```
-
-Migrations are applied automatically at boot; photos stuck in `processing`
-from an interrupted run are re-enqueued automatically.
-
-Deployment details (launchd plist, reverse proxy host, TLS) are handled
-outside this codebase — the app only needs `node server.js` honoring `PORT`
-and `DATA_DIR`.
-
-### Known runtime risk: sharp on macOS 10.13
-
-Sharp's prebuilt binaries claim macOS ≥ 10.13 support, but 10.13 is the
-**oldest supported target and must be verified on the host before first
-deploy**:
-
-```bash
-node -e "require('sharp')"
-```
-
-If it fails, fall back to sharp 0.32.x (`npm install sharp@0.32`) — this
-codebase only uses sharp APIs available in 0.32 (`resize`, `composite`,
-`webp`, `metadata`, `rotate`, `cache`, `concurrency`), so no code changes
-should be needed. `better-sqlite3` likewise needs a darwin-x64 prebuild or a
-local `npm rebuild` (requires Xcode CLT on the host).
-
-## Notes
-
-- Admin sign-in supports passkeys (WebAuthn), recovery codes, and password
-  (password can be disabled in Settings → Security after enrolling a passkey).
-  `BASE_URL` must match the browser origin for passkeys to work.
-- Rate limiting of password attempts is in-memory (single process): 10
-  failures per IP per 15 minutes → 429.
-- ZIP downloads stream originals in `store` mode directly to the response —
-  no temp files, minimal memory.
-- Image processing runs in-process with concurrency 1 (`sharp.cache(false)`,
-  `sharp.concurrency(1)`) to fit the 2 GB RAM host.
+Single-admin, self-hosted. See [SECURITY.md](SECURITY.md) for the model and
+private vulnerability reporting.
 
 ## License
 
-[AGPL-3.0-only](LICENSE) — Copyright (C) 2026 Kristian Buriasco.
-
-A network deployment of a modified version must make its source available (AGPL network clause).
+[AGPL-3.0-only](LICENSE) — Copyright (C) 2026 Kristian Buriasco. A modified
+version run as a network service must make its source available (AGPL network
+clause).

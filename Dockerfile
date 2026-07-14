@@ -15,10 +15,13 @@ RUN npm run build
 # ---- runtime stage ----
 FROM node:22-bookworm-slim AS runtime
 WORKDIR /app
+# Version shown by the app (update badge). CI passes the release tag.
+ARG APP_VERSION=dev
 ENV NODE_ENV=production \
     PORT=3200 \
     DATA_DIR=/data \
-    HOSTNAME=0.0.0.0
+    HOSTNAME=0.0.0.0 \
+    APP_VERSION=${APP_VERSION}
 
 # Run as a non-root user; /data is the mounted volume for the DB + photos.
 RUN useradd --system --uid 1001 --user-group gallery \

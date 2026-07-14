@@ -1,0 +1,23 @@
+# systemd unit for a bare-metal (non-Docker) deployment on Linux.
+# 1. Build:  npm ci && npm run build
+# 2. Copy .next/standalone + .next/static + drizzle to /opt/gallery
+# 3. Put your env in /opt/gallery/gallery.env (SESSION_SECRET, etc.)
+# 4. cp this to /etc/systemd/system/gallery.service, then:
+#      systemctl daemon-reload && systemctl enable --now gallery
+[Unit]
+Description=gallery-site
+After=network.target
+
+[Service]
+Type=simple
+User=gallery
+WorkingDirectory=/opt/gallery
+EnvironmentFile=/opt/gallery/gallery.env
+Environment=NODE_ENV=production
+Environment=DATA_DIR=/opt/gallery/data
+ExecStart=/usr/bin/node server.js
+Restart=on-failure
+RestartSec=3
+
+[Install]
+WantedBy=multi-user.target
