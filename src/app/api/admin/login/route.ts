@@ -1,6 +1,7 @@
 import bcrypt from 'bcryptjs';
 import { adminPasswordHash } from '@/lib/env';
-import { getAdminSession } from '@/lib/session';
+import { isPasswordLoginEnabled } from '@/lib/admin-auth-settings';
+import { issueAdminSession } from '@/lib/session';
 import {
   clearFailures,
   ipFromRequest,
@@ -15,6 +16,11 @@ export async function POST(req: Request) {
   const ip = ipFromRequest(req);
   if (isRateLimited(RL_SCOPE, ip)) {
     return errorJson('Too many attempts. Try again later.', 429);
+  }
+
+  if (!isPasswordLoginEnabled()) {
+    recordFailure(RL_SCOPE, ip);
+    return errorJson('Password login is disabled', 401);
   }
 
   let password: unknown;
@@ -35,8 +41,6 @@ export async function POST(req: Request) {
   }
 
   clearFailures(RL_SCOPE, ip);
-  const session = await getAdminSession();
-  session.isAdmin = true;
-  await session.save();
+  await issueAdminSession();
   return json({ ok: true });
 }

@@ -4,6 +4,7 @@ import { getSetting } from '@/lib/settings';
 import { watermarkPath } from '@/lib/paths';
 import { isAdmin } from '@/lib/session';
 import SettingsForm from './SettingsForm';
+import SecuritySettings from './SecuritySettings';
 
 export const dynamic = 'force-dynamic';
 
@@ -13,11 +14,14 @@ export default async function AdminSettingsPage() {
   if (!(await isAdmin())) redirect('/admin/login');
 
   return (
-    <SettingsForm
-      initialAbout={getSetting('aboutContent') ?? ''}
-      initialContact={getSetting('contactContent') ?? ''}
-      initialAnalyticsHeadHtml={getSetting('analytics_head_html') ?? ''}
-      hasWatermark={fs.existsSync(watermarkPath())}
-    />
+    <div className="space-y-16">
+      <SecuritySettings />
+      <SettingsForm
+        initialAbout={getSetting('aboutContent') ?? ''}
+        initialContact={getSetting('contactContent') ?? ''}
+        initialAnalyticsHeadHtml={getSetting('analytics_head_html') ?? ''}
+        hasWatermark={fs.existsSync(watermarkPath())}
+      />
+    </div>
   );
 }

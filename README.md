@@ -24,7 +24,8 @@ Copy `.env.example` to `.env` and fill in:
 | `SESSION_SECRET` | 64 random chars for cookie encryption |
 | `ADMIN_PASSWORD_HASH` | bcrypt hash — generate with `node scripts/hash-password.mjs 'mypassword'` |
 | `NEXT_PUBLIC_SITE_NAME` | Site name (baked in at build time) |
-| `BASE_URL` | Public base URL, used for share links |
+| `BASE_URL` | Public base URL for share links and WebAuthn (must be the real https origin) |
+| `RP_ID` | Optional WebAuthn RP ID override (defaults to host of `BASE_URL`) |
 
 All photos and the SQLite DB live under `$DATA_DIR`:
 
@@ -107,6 +108,9 @@ local `npm rebuild` (requires Xcode CLT on the host).
 
 ## Notes
 
+- Admin sign-in supports passkeys (WebAuthn), recovery codes, and password
+  (password can be disabled in Settings → Security after enrolling a passkey).
+  `BASE_URL` must match the browser origin for passkeys to work.
 - Rate limiting of password attempts is in-memory (single process): 10
   failures per IP per 15 minutes → 429.
 - ZIP downloads stream originals in `store` mode directly to the response —

@@ -56,6 +56,12 @@ export async function isAdmin(): Promise<boolean> {
   return true;
 }
 
+export async function issueAdminSession(): Promise<void> {
+  const session = await getAdminSession();
+  session.isAdmin = true;
+  await session.save();
+}
+
 export async function getGalleryAccessSession(): Promise<
   IronSession<GalleryAccessData>
 > {

@@ -4,6 +4,7 @@ import {
   integer,
   primaryKey,
   unique,
+  blob,
   index,
 } from 'drizzle-orm/sqlite-core';
 
@@ -215,6 +216,32 @@ export const comments = sqliteTable('comments', {
 export const settings = sqliteTable('settings', {
   key: text('key').primaryKey(),
   value: text('value').notNull(),
+});
+
+export const adminCredentials = sqliteTable(
+  'admin_credentials',
+  {
+    id: text('id').primaryKey(),
+    credentialId: text('credential_id').notNull().unique(),
+    publicKey: blob('public_key').notNull(),
+    counter: integer('counter').notNull().default(0),
+    transports: text('transports'),
+    label: text('label').notNull(),
+    createdAt: integer('created_at')
+      .notNull()
+      .$defaultFn(() => Date.now()),
+    lastUsedAt: integer('last_used_at'),
+  },
+  (t) => [unique().on(t.credentialId)],
+);
+
+export const recoveryCodes = sqliteTable('recovery_codes', {
+  id: text('id').primaryKey(),
+  codeHash: text('code_hash').notNull(),
+  usedAt: integer('used_at'),
+  createdAt: integer('created_at')
+    .notNull()
+    .$defaultFn(() => Date.now()),
 });
 
 export type Gallery = typeof galleries.$inferSelect;
