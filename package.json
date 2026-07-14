@@ -13,7 +13,7 @@
   "dependencies": {
     "archiver": "^7.0.1",
     "bcryptjs": "^3.0.3",
-    "better-sqlite3": "^12.11.1",
+    "better-sqlite3": "11.10.0",
     "drizzle-orm": "^0.45.2",
     "iron-session": "^8.0.4",
     "nanoid": "^6.0.0",
