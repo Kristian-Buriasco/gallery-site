@@ -9,16 +9,18 @@ import { detectImageType, resolveCollision, sanitizeFilename } from '@/lib/files
 import { originalPath } from '@/lib/paths';
 import { extractExif } from '@/lib/exif';
 import { enqueueDerivatives } from '@/lib/queue';
+import { getPhotoTagsForGallery } from '@/lib/tags';
 
 const MAX_UPLOAD_BYTES = 50 * 1024 * 1024;
 
 type Params = { params: Promise<{ id: string }> };
 
 /** Lightweight photo list, used by the admin UI for status polling. */
-export async function GET(_req: Request, { params }: Params) {
+export async function GET(req: Request, { params }: Params) {
   const denied = await requireAdmin();
   if (denied) return denied;
   const { id } = await params;
+  const withTags = new URL(req.url).searchParams.get('tags') === '1';
 
   const rows = getDb()
     .select()
@@ -26,6 +28,10 @@ export async function GET(_req: Request, { params }: Params) {
     .where(eq(schema.photos.galleryId, id))
     .orderBy(asc(schema.photos.sortOrder))
     .all();
+
+  if (withTags) {
+    return json({ photos: rows, photoTags: getPhotoTagsForGallery(id) });
+  }
   return json(rows);
 }
 

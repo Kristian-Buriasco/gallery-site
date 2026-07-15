@@ -1,4 +1,5 @@
 import SiteHeader from '@/components/SiteHeader';
+import { whatsappHref, whatsappLabel } from '@/lib/contact-links';
 import { getSetting } from '@/lib/settings';
 
 export const dynamic = 'force-dynamic';
@@ -10,6 +11,7 @@ export default function ContactPage() {
   const custom = getSetting('contactContent')?.trim();
   const email = getSetting('contactEmail')?.trim();
   const instagram = getSetting('contactInstagram')?.trim();
+  const whatsapp = getSetting('contactWhatsapp')?.trim();
 
   return (
     <div>
@@ -28,7 +30,7 @@ export default function ContactPage() {
             <p className="display max-w-[42ch] text-2xl leading-snug font-medium">
               {DEFAULT_INTRO}
             </p>
-            {email || instagram ? (
+            {email || instagram || whatsapp ? (
               <dl className="mt-10 divide-y divide-line border-y border-line text-[15px] dark:divide-line-dark dark:border-line-dark">
                 {email && (
                   <div className="flex items-center justify-between py-4">
@@ -54,6 +56,21 @@ export default function ContactPage() {
                         className="transition-colors hover:text-accent dark:hover:text-accent-dark"
                       >
                         @{instagram.replace(/^@/, '')}
+                      </a>
+                    </dd>
+                  </div>
+                )}
+                {whatsapp && (
+                  <div className="flex items-center justify-between py-4">
+                    <dt className="text-muted dark:text-muted-dark">WhatsApp</dt>
+                    <dd>
+                      <a
+                        href={whatsappHref(whatsapp)}
+                        target="_blank"
+                        rel="noreferrer"
+                        className="transition-colors hover:text-accent dark:hover:text-accent-dark"
+                      >
+                        {whatsappLabel(whatsapp)}
                       </a>
                     </dd>
                   </div>

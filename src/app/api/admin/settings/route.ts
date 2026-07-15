@@ -4,6 +4,13 @@ import { detectImageType } from '@/lib/files';
 import { watermarkPath } from '@/lib/paths';
 import { getSetting, setSetting } from '@/lib/settings';
 
+const SHORT_MAX = 200;
+const INTRO_MAX = 2000;
+
+function setCapped(key: string, value: string, max: number): void {
+  setSetting(key, value.slice(0, max));
+}
+
 export async function GET() {
   const denied = await requireAdmin();
   if (denied) return denied;
@@ -11,6 +18,12 @@ export async function GET() {
     aboutContent: getSetting('aboutContent') ?? '',
     contactContent: getSetting('contactContent') ?? '',
     analyticsHeadHtml: getSetting('analytics_head_html') ?? '',
+    homeEyebrow: getSetting('homeEyebrow') ?? '',
+    homeHeadline: getSetting('homeHeadline') ?? '',
+    homeIntro: getSetting('homeIntro') ?? '',
+    contactEmail: getSetting('contactEmail') ?? '',
+    contactInstagram: getSetting('contactInstagram') ?? '',
+    contactWhatsapp: getSetting('contactWhatsapp') ?? '',
     hasWatermark: fs.existsSync(watermarkPath()),
   });
 }
@@ -21,7 +34,6 @@ export async function POST(req: Request) {
 
   const contentType = req.headers.get('content-type') ?? '';
 
-  // Watermark image upload (multipart)
   if (contentType.includes('multipart/form-data')) {
     const form = await req.formData();
     const file = form.get('watermark');
@@ -35,21 +47,39 @@ export async function POST(req: Request) {
     return json({ ok: true });
   }
 
-  // Text settings (JSON)
   let body: Record<string, unknown>;
   try {
     body = await req.json();
   } catch {
     return errorJson('Invalid request', 400);
   }
+
   if (typeof body.aboutContent === 'string') {
-    setSetting('aboutContent', body.aboutContent);
+    setCapped('aboutContent', body.aboutContent, INTRO_MAX);
   }
   if (typeof body.contactContent === 'string') {
-    setSetting('contactContent', body.contactContent);
+    setCapped('contactContent', body.contactContent, INTRO_MAX);
   }
   if (typeof body.analyticsHeadHtml === 'string') {
-    setSetting('analytics_head_html', body.analyticsHeadHtml);
+    setCapped('analytics_head_html', body.analyticsHeadHtml, INTRO_MAX);
+  }
+  if (typeof body.homeEyebrow === 'string') {
+    setCapped('homeEyebrow', body.homeEyebrow, SHORT_MAX);
+  }
+  if (typeof body.homeHeadline === 'string') {
+    setCapped('homeHeadline', body.homeHeadline, SHORT_MAX);
+  }
+  if (typeof body.homeIntro === 'string') {
+    setCapped('homeIntro', body.homeIntro, INTRO_MAX);
+  }
+  if (typeof body.contactEmail === 'string') {
+    setCapped('contactEmail', body.contactEmail.trim(), SHORT_MAX);
+  }
+  if (typeof body.contactInstagram === 'string') {
+    setCapped('contactInstagram', body.contactInstagram.trim(), SHORT_MAX);
+  }
+  if (typeof body.contactWhatsapp === 'string') {
+    setCapped('contactWhatsapp', body.contactWhatsapp.trim(), SHORT_MAX);
   }
   return json({ ok: true });
 }

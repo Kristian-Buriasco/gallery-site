@@ -7,11 +7,23 @@ export default function SettingsForm({
   initialAbout,
   initialContact,
   initialAnalyticsHeadHtml,
+  initialHomeEyebrow,
+  initialHomeHeadline,
+  initialHomeIntro,
+  initialContactEmail,
+  initialContactInstagram,
+  initialContactWhatsapp,
   hasWatermark,
 }: {
   initialAbout: string;
   initialContact: string;
   initialAnalyticsHeadHtml: string;
+  initialHomeEyebrow: string;
+  initialHomeHeadline: string;
+  initialHomeIntro: string;
+  initialContactEmail: string;
+  initialContactInstagram: string;
+  initialContactWhatsapp: string;
   hasWatermark: boolean;
 }) {
   const router = useRouter();
@@ -20,6 +32,12 @@ export default function SettingsForm({
   const [analyticsHeadHtml, setAnalyticsHeadHtml] = useState(
     initialAnalyticsHeadHtml,
   );
+  const [homeEyebrow, setHomeEyebrow] = useState(initialHomeEyebrow);
+  const [homeHeadline, setHomeHeadline] = useState(initialHomeHeadline);
+  const [homeIntro, setHomeIntro] = useState(initialHomeIntro);
+  const [contactEmail, setContactEmail] = useState(initialContactEmail);
+  const [contactInstagram, setContactInstagram] = useState(initialContactInstagram);
+  const [contactWhatsapp, setContactWhatsapp] = useState(initialContactWhatsapp);
   const [saving, setSaving] = useState(false);
   const [saved, setSaved] = useState(false);
   const [wmBusy, setWmBusy] = useState(false);
@@ -35,6 +53,12 @@ export default function SettingsForm({
         aboutContent: about,
         contactContent: contact,
         analyticsHeadHtml,
+        homeEyebrow,
+        homeHeadline,
+        homeIntro,
+        contactEmail,
+        contactInstagram,
+        contactWhatsapp,
       }),
     });
     setSaving(false);
@@ -116,6 +140,91 @@ export default function SettingsForm({
             </button>
           )}
         </div>
+      </section>
+
+      <section className="space-y-6">
+        <h2 className="text-sm font-medium tracking-widest uppercase">Site content</h2>
+        <p className="text-xs text-neutral-500 dark:text-neutral-400">
+          Homepage hero copy and contact handles shown on the public contact page.
+        </p>
+        <label className="block">
+          <span className="mb-2 block text-xs text-neutral-500 dark:text-neutral-400">
+            Homepage eyebrow
+          </span>
+          <input
+            value={homeEyebrow}
+            onChange={(e) => setHomeEyebrow(e.target.value)}
+            maxLength={200}
+            className="w-full border-b border-neutral-300 bg-transparent py-2 text-sm outline-none focus:border-neutral-900 dark:border-neutral-700"
+          />
+        </label>
+        <label className="block">
+          <span className="mb-2 block text-xs text-neutral-500 dark:text-neutral-400">
+            Homepage headline
+          </span>
+          <input
+            value={homeHeadline}
+            onChange={(e) => setHomeHeadline(e.target.value)}
+            maxLength={200}
+            className="w-full border-b border-neutral-300 bg-transparent py-2 text-sm outline-none focus:border-neutral-900 dark:border-neutral-700"
+          />
+        </label>
+        <label className="block">
+          <span className="mb-2 block text-xs text-neutral-500 dark:text-neutral-400">
+            Homepage intro
+          </span>
+          <textarea
+            value={homeIntro}
+            onChange={(e) => setHomeIntro(e.target.value)}
+            rows={4}
+            maxLength={2000}
+            className={textareaClass}
+          />
+        </label>
+        <label className="block">
+          <span className="mb-2 block text-xs text-neutral-500 dark:text-neutral-400">
+            Contact email (optional)
+          </span>
+          <input
+            type="email"
+            value={contactEmail}
+            onChange={(e) => setContactEmail(e.target.value)}
+            maxLength={200}
+            className="w-full border-b border-neutral-300 bg-transparent py-2 text-sm outline-none focus:border-neutral-900 dark:border-neutral-700"
+          />
+        </label>
+        <label className="block">
+          <span className="mb-2 block text-xs text-neutral-500 dark:text-neutral-400">
+            Instagram handle
+          </span>
+          <input
+            value={contactInstagram}
+            onChange={(e) => setContactInstagram(e.target.value)}
+            maxLength={200}
+            placeholder="_kri14_"
+            className="w-full border-b border-neutral-300 bg-transparent py-2 text-sm outline-none focus:border-neutral-900 dark:border-neutral-700"
+          />
+        </label>
+        <label className="block">
+          <span className="mb-2 block text-xs text-neutral-500 dark:text-neutral-400">
+            WhatsApp number or link
+          </span>
+          <input
+            value={contactWhatsapp}
+            onChange={(e) => setContactWhatsapp(e.target.value)}
+            maxLength={200}
+            placeholder="kristianburiasco"
+            className="w-full border-b border-neutral-300 bg-transparent py-2 text-sm outline-none focus:border-neutral-900 dark:border-neutral-700"
+          />
+        </label>
+        <button
+          type="button"
+          onClick={saveText}
+          disabled={saving}
+          className="border border-neutral-900 px-6 py-2 text-xs tracking-widest uppercase transition-colors hover:bg-neutral-900 hover:text-white disabled:opacity-40 dark:border-neutral-100 dark:hover:bg-neutral-100 dark:hover:text-black"
+        >
+          {saving ? 'Saving…' : saved ? 'Saved' : 'Save site content'}
+        </button>
       </section>
 
       <section className="space-y-6">

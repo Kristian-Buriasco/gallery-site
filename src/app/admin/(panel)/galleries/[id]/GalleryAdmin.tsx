@@ -62,7 +62,22 @@ export default function GalleryAdmin({
 }: Props) {
   const router = useRouter();
   const [photos, setPhotos] = useState<Photo[]>(initialPhotos);
+  const [selected, setSelected] = useState<Set<string>>(new Set());
   const isClientGallery = gallery.type === 'client';
+
+  function togglePhotoSelection(photoId: string, e: React.MouseEvent) {
+    setSelected((prev) => {
+      const next = new Set(prev);
+      if (e.shiftKey && prev.size > 0) {
+        next.add(photoId);
+      } else if (next.has(photoId)) {
+        next.delete(photoId);
+      } else {
+        next.add(photoId);
+      }
+      return next;
+    });
+  }
 
   // ---- status polling while anything is processing ----
   const anyProcessing = photos.some((p) => p.status === 'processing');
@@ -472,18 +487,46 @@ export default function GalleryAdmin({
             </>
           )}
           {!isClientGallery && (
-            <ToggleSwitch
-              label="Show public like counts"
-              hint="Visitors see aggregate counts next to hearts"
-              checked={gallery.showLikeCounts}
-              onChange={(v) => patchGallery({ showLikeCounts: v })}
-            />
+            <>
+              <ToggleSwitch
+                label="Show public like counts"
+                hint="Visitors see aggregate counts next to hearts"
+                checked={gallery.showLikeCounts}
+                onChange={(v) => patchGallery({ showLikeCounts: v })}
+              />
+              <ToggleSwitch
+                label="Show in Selected Work"
+                hint="Featured on the homepage Selected Work grid"
+                checked={gallery.featured}
+                onChange={(v) => patchGallery({ featured: v })}
+              />
+              <label className="block text-sm">
+                <span className="mb-1 block text-xs text-neutral-500 dark:text-neutral-400">
+                  Homepage sort order
+                </span>
+                <input
+                  type="number"
+                  defaultValue={gallery.sortOrder}
+                  onBlur={(e) =>
+                    patchGallery({ sortOrder: parseInt(e.target.value, 10) || 0 })
+                  }
+                  className={inputClass}
+                />
+              </label>
+            </>
           )}
         </div>
       </section>
 
       <AdminExtraSettings gallery={gallery} patchGallery={patchGallery} />
-      <AdminSectionsPanel galleryId={gallery.id} photos={photos} onPhotosChange={setPhotos} />
+      <AdminSectionsPanel
+        galleryId={gallery.id}
+        photos={photos}
+        selected={selected}
+        onSelectedChange={setSelected}
+        onPhotosChange={setPhotos}
+        onTogglePhoto={togglePhotoSelection}
+      />
       <AdminCommentsPanel galleryId={gallery.id} />
 
       {/* upload */}
@@ -629,10 +672,11 @@ export default function GalleryAdmin({
             {gridPhotos.map((p, i) => {
               const selCount = selectionsByPhoto.get(p.id)?.length ?? 0;
               const likeCount = likeCounts[p.id] ?? 0;
+              const isSelected = selected.has(p.id);
               return (
                 <div
                   key={p.id}
-                  draggable={!selectedOnly && !sortByLikes}
+                  draggable={!selectedOnly && !sortByLikes && !isSelected}
                   onDragStart={() => (dragIndex.current = i)}
                   onDragOver={(e) => e.preventDefault()}
                   onDrop={() => {
@@ -649,7 +693,9 @@ export default function GalleryAdmin({
                       return next;
                     });
                   }}
-                  className="group relative aspect-square overflow-hidden bg-neutral-100 dark:bg-neutral-900"
+                  className={`group relative aspect-square overflow-hidden bg-neutral-100 dark:bg-neutral-900 ${
+                    isSelected ? 'ring-2 ring-accent dark:ring-accent-dark' : ''
+                  }`}
                 >
                   {p.status === 'ready' ? (
                     /* eslint-disable-next-line @next/next/no-img-element */
@@ -657,12 +703,23 @@ export default function GalleryAdmin({
                       src={`/img/${p.id}/thumb?v=${p.updatedAt}`}
                       alt={p.filename}
                       loading="lazy"
-                      className="h-full w-full object-cover"
+                      className={`h-full w-full object-cover ${isSelected ? 'opacity-75' : ''}`}
                     />
                   ) : (
                     <div className="flex h-full w-full items-center justify-center text-[10px] text-neutral-400">
                       {p.status === 'processing' ? 'processing…' : 'error'}
                     </div>
+                  )}
+                  <button
+                    type="button"
+                    onClick={(e) => togglePhotoSelection(p.id, e)}
+                    className="absolute top-1 left-1 z-20 flex h-7 w-7 items-center justify-center rounded-full bg-black/50 text-white hover:bg-black/70"
+                    aria-label={isSelected ? 'Deselect photo' : 'Select photo'}
+                  >
+                    {isSelected ? '✓' : ''}
+                  </button>
+                  {isSelected && (
+                    <span className="pointer-events-none absolute inset-0 bg-accent/10 dark:bg-accent-dark/10" />
                   )}
                   {gallery.coverPhotoId === p.id && (
                     <span className="absolute top-1 left-1 rounded bg-black/70 px-1.5 py-0.5 text-[9px] text-white">

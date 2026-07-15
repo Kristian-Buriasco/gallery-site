@@ -7,6 +7,10 @@ import { getReadyPhotos } from '@/lib/public-data';
 import { buildSectionPayloads } from '@/lib/gallery-page-data';
 import { isGalleryExpired } from '@/lib/downloads';
 import { recordGalleryView } from '@/lib/views';
+import {
+  getDistinctPhotoTagsForClientGallery,
+  getPhotoTagMapForClient,
+} from '@/lib/tags';
 import PasswordGate from './PasswordGate';
 import GalleryClient from './GalleryClient';
 
@@ -85,6 +89,8 @@ export default async function ClientGalleryPage({
     .orderBy(asc(schema.sections.sortOrder))
     .all();
   const sectionGroups = buildSectionPayloads(gallery, photos, sectionsDb);
+  const tagOptions = getDistinctPhotoTagsForClientGallery(gallery.id);
+  const photoTagIds = getPhotoTagMapForClient(gallery.id);
 
   return (
     <GalleryClient
@@ -106,6 +112,8 @@ export default async function ClientGalleryPage({
       selectionLimit={
         gallery.limitSelections && gallery.selectionLimit ? gallery.selectionLimit : null
       }
+      photoTagIds={photoTagIds}
+      tagOptions={tagOptions}
     />
   );
 }

@@ -53,6 +53,7 @@ export const galleries = sqliteTable('galleries', {
     .notNull()
     .default(true),
   published: integer('published', { mode: 'boolean' }).notNull().default(false),
+  featured: integer('featured', { mode: 'boolean' }).notNull().default(false),
   showLikeCounts: integer('show_like_counts', { mode: 'boolean' })
     .notNull()
     .default(false),
@@ -243,6 +244,40 @@ export const recoveryCodes = sqliteTable('recovery_codes', {
     .notNull()
     .$defaultFn(() => Date.now()),
 });
+
+export const tags = sqliteTable('tags', {
+  id: text('id').primaryKey(),
+  name: text('name').notNull().unique(),
+  createdAt: integer('created_at')
+    .notNull()
+    .$defaultFn(() => Date.now()),
+});
+
+export const photoTags = sqliteTable(
+  'photo_tags',
+  {
+    photoId: text('photo_id')
+      .notNull()
+      .references(() => photos.id, { onDelete: 'cascade' }),
+    tagId: text('tag_id')
+      .notNull()
+      .references(() => tags.id, { onDelete: 'cascade' }),
+  },
+  (t) => [primaryKey({ columns: [t.photoId, t.tagId] })],
+);
+
+export const galleryTags = sqliteTable(
+  'gallery_tags',
+  {
+    galleryId: text('gallery_id')
+      .notNull()
+      .references(() => galleries.id, { onDelete: 'cascade' }),
+    tagId: text('tag_id')
+      .notNull()
+      .references(() => tags.id, { onDelete: 'cascade' }),
+  },
+  (t) => [primaryKey({ columns: [t.galleryId, t.tagId] })],
+);
 
 export type Gallery = typeof galleries.$inferSelect;
 export type Section = typeof sections.$inferSelect;

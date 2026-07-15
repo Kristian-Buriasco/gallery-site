@@ -8,6 +8,7 @@ const BOOL_KEYS = [
   'favoritesDownloadEnabled',
   'selectionExportEnabled',
   'published',
+  'featured',
   'showLikeCounts',
   'showExif',
   'showLocation',

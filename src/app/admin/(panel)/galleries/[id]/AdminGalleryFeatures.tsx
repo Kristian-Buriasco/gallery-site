@@ -1,11 +1,165 @@
 'use client';
 
-import { useCallback, useEffect, useState } from 'react';
+import { useCallback, useEffect, useMemo, useState } from 'react';
 import type { Gallery, Photo } from '@/db/schema';
 import SegmentedControl from '@/components/SegmentedControl';
 import ToggleSwitch from '@/components/ToggleSwitch';
 
 type Section = { id: string; title: string; sortOrder: number };
+type Tag = { id: string; name: string };
+
+function AdminSelectableThumb({
+  photo,
+  selected,
+  tags,
+  onToggle,
+}: {
+  photo: Photo;
+  selected: boolean;
+  tags?: { id: string; name: string }[];
+  onToggle: (e: React.MouseEvent) => void;
+}) {
+  return (
+    <button
+      type="button"
+      onClick={onToggle}
+      className={`relative w-[140px] shrink-0 overflow-hidden rounded border-2 transition-all ${
+        selected
+          ? 'border-accent ring-2 ring-accent/40 dark:border-accent-dark dark:ring-accent-dark/40'
+          : 'border-transparent hover:border-neutral-300 dark:hover:border-neutral-600'
+      }`}
+    >
+      <div className={`aspect-square w-full ${selected ? 'opacity-75' : ''}`}>
+        {photo.status === 'ready' ? (
+          /* eslint-disable-next-line @next/next/no-img-element */
+          <img
+            src={`/img/${photo.id}/thumb?v=${photo.updatedAt}`}
+            alt={photo.filename}
+            loading="lazy"
+            className="h-full w-full object-cover"
+          />
+        ) : (
+          <div className="flex h-full w-full items-center justify-center bg-neutral-100 text-[10px] text-neutral-400 dark:bg-neutral-900">
+            {photo.status}
+          </div>
+        )}
+      </div>
+      {selected && (
+        <span className="absolute top-1.5 right-1.5 flex h-6 w-6 items-center justify-center rounded-full bg-accent text-[11px] font-bold text-white dark:bg-accent-dark">
+          ✓
+        </span>
+      )}
+      {tags && tags.length > 0 && (
+        <div className="absolute inset-x-0 bottom-0 flex flex-wrap gap-0.5 bg-black/60 p-1">
+          {tags.slice(0, 2).map((t) => (
+            <span key={t.id} className="rounded bg-white/20 px-1 text-[8px] text-white">
+              {t.name}
+            </span>
+          ))}
+        </div>
+      )}
+    </button>
+  );
+}
+
+export function AdminGalleryTags({
+  galleryId,
+}: {
+  galleryId: string;
+}) {
+  const [tags, setTags] = useState<Tag[]>([]);
+  const [allTags, setAllTags] = useState<Tag[]>([]);
+  const [input, setInput] = useState('');
+
+  const load = useCallback(async () => {
+    const [gRes, tRes] = await Promise.all([
+      fetch(`/api/admin/galleries/${galleryId}/tags`),
+      fetch('/api/admin/tags'),
+    ]);
+    if (gRes.ok) setTags((await gRes.json()).tags ?? []);
+    if (tRes.ok) setAllTags((await tRes.json()).tags ?? []);
+  }, [galleryId]);
+
+  useEffect(() => {
+    void load();
+  }, [load]);
+
+  async function addTag(name: string) {
+    const trimmed = name.trim();
+    if (!trimmed) return;
+    const res = await fetch(`/api/admin/galleries/${galleryId}/tags`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ tagName: trimmed }),
+    });
+    if (res.ok) {
+      setInput('');
+      await load();
+    }
+  }
+
+  async function removeTag(tagId: string) {
+    await fetch(`/api/admin/galleries/${galleryId}/tags`, {
+      method: 'DELETE',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ tagId }),
+    });
+    await load();
+  }
+
+  const suggestions = allTags.filter(
+    (t) => !tags.some((g) => g.id === t.id) && t.name.toLowerCase().includes(input.toLowerCase()),
+  );
+
+  return (
+    <div className="space-y-2">
+      <span className="block text-xs text-neutral-500">Gallery tags</span>
+      <div className="flex flex-wrap gap-1.5">
+        {tags.map((t) => (
+          <span
+            key={t.id}
+            className="inline-flex items-center gap-1 rounded-full border border-neutral-300 px-2 py-0.5 text-xs dark:border-neutral-700"
+          >
+            {t.name}
+            <button type="button" onClick={() => removeTag(t.id)} className="text-neutral-400 hover:text-red-500">
+              ×
+            </button>
+          </span>
+        ))}
+      </div>
+      <div className="relative">
+        <input
+          value={input}
+          onChange={(e) => setInput(e.target.value)}
+          onKeyDown={(e) => {
+            if (e.key === 'Enter') {
+              e.preventDefault();
+              void addTag(input);
+            }
+          }}
+          placeholder="Add tag…"
+          maxLength={40}
+          className="w-full max-w-xs border-b border-neutral-300 bg-transparent py-1 text-sm dark:border-neutral-700"
+        />
+        {input && suggestions.length > 0 && (
+          <ul className="absolute z-10 mt-1 w-full max-w-xs border border-neutral-200 bg-white text-xs shadow dark:border-neutral-800 dark:bg-neutral-900">
+            {suggestions.slice(0, 8).map((t) => (
+              <li key={t.id}>
+                <button
+                  type="button"
+                  className="block w-full px-2 py-1 text-left hover:bg-neutral-100 dark:hover:bg-neutral-800"
+                  onClick={() => addTag(t.name)}
+                >
+                  {t.name}
+                </button>
+              </li>
+            ))}
+          </ul>
+        )}
+      </div>
+    </div>
+  );
+}
 
 export function AdminExtraSettings({
   gallery,
@@ -20,6 +174,7 @@ export function AdminExtraSettings({
       <h2 className="text-xs tracking-widest text-neutral-500 uppercase dark:text-neutral-400">
         Extended settings
       </h2>
+      <AdminGalleryTags galleryId={gallery.id} />
       <SegmentedControl
         label="Comments"
         hint="Public per-photo comments"
@@ -206,25 +361,69 @@ export function AdminExtraSettings({
 export function AdminSectionsPanel({
   galleryId,
   photos,
+  selected,
+  onSelectedChange,
   onPhotosChange,
+  onTogglePhoto,
 }: {
   galleryId: string;
   photos: Photo[];
+  selected: Set<string>;
+  onSelectedChange: (next: Set<string>) => void;
   onPhotosChange: (photos: Photo[]) => void;
+  onTogglePhoto: (photoId: string, e: React.MouseEvent) => void;
 }) {
   const [sections, setSections] = useState<Section[]>([]);
   const [newTitle, setNewTitle] = useState('');
-  const [selected, setSelected] = useState<Set<string>>(new Set());
-  const [folderSections, setFolderSections] = useState(true);
+  const [tagFilter, setTagFilter] = useState<string | null>(null);
+  const [photoTags, setPhotoTags] = useState<Record<string, Tag[]>>({});
+  const [galleryTags, setGalleryTags] = useState<Tag[]>([]);
+  const [allTags, setAllTags] = useState<Tag[]>([]);
+  const [tagInput, setTagInput] = useState('');
+  const [movePreview, setMovePreview] = useState<string | null>(null);
 
   const load = useCallback(async () => {
-    const res = await fetch(`/api/admin/galleries/${galleryId}/sections`);
-    if (res.ok) setSections(await res.json());
+    const [secRes, tagRes, allRes] = await Promise.all([
+      fetch(`/api/admin/galleries/${galleryId}/sections`),
+      fetch(`/api/admin/galleries/${galleryId}/tags`),
+      fetch('/api/admin/tags'),
+    ]);
+    if (secRes.ok) setSections(await secRes.json());
+    if (allRes.ok) setAllTags((await allRes.json()).tags ?? []);
+    if (tagRes.ok) {
+      const data = await tagRes.json();
+      setGalleryTags(data.tags ?? []);
+    }
+    const ptRes = await fetch(`/api/admin/galleries/${galleryId}/photos?tags=1`);
+    if (ptRes.ok) {
+      const data = await ptRes.json();
+      if (data.photoTags) setPhotoTags(data.photoTags);
+    }
   }, [galleryId]);
 
   useEffect(() => {
     void load();
-  }, [load]);
+  }, [load, photos.length]);
+
+  const filteredPhotos = useMemo(() => {
+    if (!tagFilter) return photos;
+    return photos.filter((p) => photoTags[p.id]?.some((t) => t.id === tagFilter));
+  }, [photos, tagFilter, photoTags]);
+
+  const photosBySection = useMemo(() => {
+    const groups: { id: string | null; title: string; photos: Photo[] }[] = [];
+    const ungrouped = filteredPhotos.filter((p) => !p.sectionId);
+    if (ungrouped.length > 0) {
+      groups.push({ id: null, title: 'Ungrouped', photos: ungrouped });
+    }
+    for (const s of sections) {
+      const secPhotos = filteredPhotos.filter((p) => p.sectionId === s.id);
+      if (secPhotos.length > 0) {
+        groups.push({ id: s.id, title: s.title, photos: secPhotos });
+      }
+    }
+    return groups;
+  }, [filteredPhotos, sections]);
 
   async function createSection() {
     if (!newTitle.trim()) return;
@@ -245,9 +444,22 @@ export function AdminSectionsPanel({
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ action, photoIds: [...selected], ...extra }),
     });
-    setSelected(new Set());
+    onSelectedChange(new Set());
+    setMovePreview(null);
     const res = await fetch(`/api/admin/galleries/${galleryId}/photos`);
     if (res.ok) onPhotosChange(await res.json());
+    await load();
+  }
+
+  async function assignTag(tagName: string) {
+    if (selected.size === 0) return;
+    await fetch('/api/admin/photos/tags', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ photoIds: [...selected], tagName }),
+    });
+    setTagInput('');
+    await load();
   }
 
   async function sortPhotos(mode: string, sectionId: string | null) {
@@ -260,9 +472,92 @@ export function AdminSectionsPanel({
     if (res.ok) onPhotosChange(await res.json());
   }
 
+  function selectAllVisible() {
+    onSelectedChange(new Set(filteredPhotos.map((p) => p.id)));
+  }
+
+  const selectedPhotos = photos.filter((p) => selected.has(p.id));
+
   return (
     <div className="space-y-4 border-t border-neutral-200 pt-6 dark:border-neutral-800">
-      <h2 className="text-xs tracking-widest text-neutral-500 uppercase">Sections & bulk</h2>
+      <h2 className="text-xs tracking-widest text-neutral-500 uppercase">
+        Sections, tags & bulk
+      </h2>
+
+      {selected.size > 0 && (
+        <div className="rounded border border-accent/30 bg-accent/5 p-3 dark:border-accent-dark/30 dark:bg-accent-dark/5">
+          <p className="mb-2 text-xs font-medium">
+            {selected.size} photo{selected.size === 1 ? '' : 's'} selected
+          </p>
+          <div className="flex gap-2 overflow-x-auto pb-1">
+            {selectedPhotos.map((p) => (
+              /* eslint-disable-next-line @next/next/no-img-element */
+              <img
+                key={p.id}
+                src={`/img/${p.id}/thumb?v=${p.updatedAt}`}
+                alt={p.filename}
+                className="h-16 w-16 shrink-0 rounded object-cover"
+              />
+            ))}
+          </div>
+        </div>
+      )}
+
+      {movePreview && selected.size > 0 && (
+        <div className="rounded border border-neutral-300 p-3 text-xs dark:border-neutral-700">
+          Move {selected.size} photo{selected.size === 1 ? '' : 's'} to &ldquo;
+          {sections.find((s) => s.id === movePreview)?.title ?? 'section'}&rdquo;?
+          <div className="mt-2 flex gap-2 overflow-x-auto">
+            {selectedPhotos.slice(0, 8).map((p) => (
+              /* eslint-disable-next-line @next/next/no-img-element */
+              <img
+                key={p.id}
+                src={`/img/${p.id}/thumb?v=${p.updatedAt}`}
+                alt=""
+                className="h-14 w-14 shrink-0 rounded object-cover"
+              />
+            ))}
+          </div>
+          <div className="mt-2 flex gap-2">
+            <button
+              type="button"
+              className="border px-2 py-1"
+              onClick={() => {
+                bulk('move', { sectionId: movePreview });
+                setMovePreview(null);
+              }}
+            >
+              Confirm move
+            </button>
+            <button type="button" className="underline" onClick={() => setMovePreview(null)}>
+              Cancel
+            </button>
+          </div>
+        </div>
+      )}
+
+      <div className="flex flex-wrap gap-2">
+        {galleryTags.map((t) => (
+          <button
+            key={t.id}
+            type="button"
+            onClick={() => setTagFilter(tagFilter === t.id ? null : t.id)}
+            className={`rounded-full border px-2.5 py-0.5 text-xs ${
+              tagFilter === t.id
+                ? 'border-accent bg-accent/10 dark:border-accent-dark'
+                : 'border-neutral-300 dark:border-neutral-700'
+            }`}
+          >
+            {t.name}
+          </button>
+        ))}
+        {tagFilter && (
+          <button type="button" onClick={() => setTagFilter(null)} className="text-xs underline">
+            Clear filter
+          </button>
+        )}
+      </div>
+
       <div className="flex flex-wrap gap-2">
         <input
           value={newTitle}
@@ -274,25 +569,23 @@ export function AdminSectionsPanel({
           Add section
         </button>
       </div>
-      <ul className="space-y-1 text-xs">
+
+      <ul className="space-y-2 text-xs">
         {sections.map((s) => (
-          <li key={s.id}>
-            {s.title}{' '}
+          <li key={s.id} className="flex flex-wrap items-center gap-2">
+            <span className="font-medium">{s.title}</span>
             <button
               type="button"
               className="underline"
-              onClick={() =>
-                bulk('move', { sectionId: s.id }).then(async () => {
-                  const r = await fetch(`/api/admin/galleries/${galleryId}/photos`);
-                  if (r.ok) onPhotosChange(await r.json());
-                })
-              }
+              disabled={selected.size === 0}
+              onClick={() => setMovePreview(s.id)}
             >
-              move selected here
+              Move selected here
             </button>
           </li>
         ))}
       </ul>
+
       <div className="flex flex-wrap gap-2 text-xs">
         <button type="button" onClick={() => sortPhotos('filename', null)}>
           Sort filename
@@ -303,45 +596,66 @@ export function AdminSectionsPanel({
         <button type="button" onClick={() => sortPhotos('upload', null)}>
           Sort upload date
         </button>
+        <button type="button" onClick={selectAllVisible} disabled={filteredPhotos.length === 0}>
+          Select all visible
+        </button>
+        <button type="button" onClick={() => onSelectedChange(new Set())} disabled={selected.size === 0}>
+          Clear selection
+        </button>
         <button type="button" onClick={() => bulk('cover')} disabled={selected.size !== 1}>
           Set cover
         </button>
-        <button type="button" onClick={() => bulk('delete')}>
-          Delete selected ({selected.size})
+        <button type="button" onClick={() => bulk('delete')} disabled={selected.size === 0}>
+          Delete selected
         </button>
       </div>
-      <label className="flex items-center gap-2 text-xs">
+
+      <div className="flex flex-wrap items-center gap-2 text-xs">
         <input
-          type="checkbox"
-          checked={folderSections}
-          onChange={(e) => setFolderSections(e.target.checked)}
+          value={tagInput}
+          onChange={(e) => setTagInput(e.target.value)}
+          placeholder="Add tag to selected…"
+          maxLength={40}
+          className="border-b border-neutral-300 bg-transparent py-1 dark:border-neutral-700"
         />
-        Create sections from subfolders on folder upload
-      </label>
-      <p className="text-xs text-neutral-500">
-        Shift-click photos in the grid below to multi-select (checkbox mode via click).
-      </p>
-      <div className="flex flex-wrap gap-1">
-        {photos.map((p) => (
+        <button
+          type="button"
+          disabled={!tagInput.trim() || selected.size === 0}
+          onClick={() => assignTag(tagInput)}
+        >
+          Add tag
+        </button>
+        {allTags.slice(0, 6).map((t) => (
           <button
-            key={p.id}
+            key={t.id}
             type="button"
-            onClick={(e) => {
-              setSelected((prev) => {
-                const next = new Set(prev);
-                if (e.shiftKey && prev.size > 0) {
-                  next.add(p.id);
-                } else if (next.has(p.id)) next.delete(p.id);
-                else next.add(p.id);
-                return next;
-              });
-            }}
-            className={`border px-1 text-[10px] ${selected.has(p.id) ? 'border-neutral-900 dark:border-neutral-100' : 'border-transparent'}`}
+            disabled={selected.size === 0}
+            className="rounded border border-neutral-300 px-1.5 py-0.5 dark:border-neutral-700"
+            onClick={() => assignTag(t.name)}
           >
-            {p.filename.slice(0, 12)}
+            + {t.name}
           </button>
         ))}
       </div>
+
+      {photosBySection.map((group) => (
+        <div key={group.id ?? 'ungrouped'} className="space-y-2">
+          <h3 className="text-xs font-medium tracking-widest text-neutral-500 uppercase">
+            {group.title}
+          </h3>
+          <div className="flex flex-wrap gap-2">
+            {group.photos.map((p) => (
+              <AdminSelectableThumb
+                key={p.id}
+                photo={p}
+                selected={selected.has(p.id)}
+                tags={photoTags[p.id]}
+                onToggle={(e) => onTogglePhoto(p.id, e)}
+              />
+            ))}
+          </div>
+        </div>
+      ))}
     </div>
   );
 }
@@ -403,3 +717,5 @@ export function AdminCommentsPanel({ galleryId }: { galleryId: string }) {
     </div>
   );
 }
+
+export { AdminSelectableThumb };

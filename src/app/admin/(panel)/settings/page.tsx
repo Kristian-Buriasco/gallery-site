@@ -20,6 +20,12 @@ export default async function AdminSettingsPage() {
         initialAbout={getSetting('aboutContent') ?? ''}
         initialContact={getSetting('contactContent') ?? ''}
         initialAnalyticsHeadHtml={getSetting('analytics_head_html') ?? ''}
+        initialHomeEyebrow={getSetting('homeEyebrow') ?? ''}
+        initialHomeHeadline={getSetting('homeHeadline') ?? ''}
+        initialHomeIntro={getSetting('homeIntro') ?? ''}
+        initialContactEmail={getSetting('contactEmail') ?? ''}
+        initialContactInstagram={getSetting('contactInstagram') ?? ''}
+        initialContactWhatsapp={getSetting('contactWhatsapp') ?? ''}
         hasWatermark={fs.existsSync(watermarkPath())}
       />
     </div>

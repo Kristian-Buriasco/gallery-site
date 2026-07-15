@@ -2,14 +2,16 @@ import Link from 'next/link';
 import SiteHeader from '@/components/SiteHeader';
 import Reveal from '@/components/Reveal';
 import { getSetting } from '@/lib/settings';
-import { coverPhotoId, getPublishedPortfolioGalleries } from '@/lib/public-data';
+import { coverPhotoId, getPublishedPortfolioGalleries, getSelectedWorkGalleries } from '@/lib/public-data';
 
 export const dynamic = 'force-dynamic';
 
 export default function HomePage() {
-  const galleries = getPublishedPortfolioGalleries();
+  const galleries = getSelectedWorkGalleries();
   const withCovers = galleries.map((g) => ({ gallery: g, cover: coverPhotoId(g) }));
-  const hero = withCovers.find((g) => g.cover !== null);
+  const heroSource = getPublishedPortfolioGalleries();
+  const heroWithCovers = heroSource.map((g) => ({ gallery: g, cover: coverPhotoId(g) }));
+  const hero = heroWithCovers.find((g) => g.cover !== null);
 
   const eyebrow = getSetting('homeEyebrow') || 'Photographer';
   const headline = getSetting('homeHeadline') || 'The moment, kept.';

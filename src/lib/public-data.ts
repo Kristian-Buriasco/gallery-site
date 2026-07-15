@@ -11,8 +11,15 @@ export function getPublishedPortfolioGalleries() {
         eq(schema.galleries.published, true),
       ),
     )
-    .orderBy(asc(schema.galleries.sortOrder))
+    .orderBy(asc(schema.galleries.sortOrder), asc(schema.galleries.createdAt))
     .all();
+}
+
+/** Selected Work: featured portfolios, or all if none featured. */
+export function getSelectedWorkGalleries() {
+  const all = getPublishedPortfolioGalleries();
+  const featured = all.filter((g) => g.featured);
+  return featured.length > 0 ? featured : all;
 }
 
 export function getReadyPhotos(galleryId: string) {

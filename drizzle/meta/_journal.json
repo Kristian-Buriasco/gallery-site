@@ -64,6 +64,20 @@
       "when": 1783990800000,
       "tag": "0008_passkeys",
       "breakpoints": true
+    },
+    {
+      "idx": 9,
+      "version": "6",
+      "when": 1783994400000,
+      "tag": "0009_featured",
+      "breakpoints": true
+    },
+    {
+      "idx": 10,
+      "version": "6",
+      "when": 1783998000000,
+      "tag": "0010_tags",
+      "breakpoints": true
     }
   ]
 }

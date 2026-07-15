@@ -27,6 +27,8 @@ interface Props {
   locationLat: string | null;
   locationLng: string | null;
   selectionLimit: number | null;
+  photoTagIds: Record<string, string[]>;
+  tagOptions: { id: string; name: string }[];
 }
 
 export default function GalleryClient({
@@ -45,6 +47,8 @@ export default function GalleryClient({
   locationLat,
   locationLng,
   selectionLimit,
+  photoTagIds,
+  tagOptions,
 }: Props) {
   const photos = useMemo(() => sections.flatMap((s) => s.photos), [sections]);
   const [visitorReady, setVisitorReady] = useState(hasVisitor);
@@ -219,6 +223,9 @@ export default function GalleryClient({
             sections={filteredSections}
             commentsEnabled={commentsEnabled}
             commentCounts={commentCounts}
+            selectedIds={selected}
+            photoTagIds={photoTagIds}
+            tagOptions={tagOptions}
             onOpenLightbox={setLightbox}
             renderTileOverlay={(p: LightboxPhoto) => (
               <button
@@ -228,13 +235,13 @@ export default function GalleryClient({
                 aria-label={
                   selected.has(p.id) ? 'Remove from selection' : 'Add to selection'
                 }
-                className={`absolute right-2 bottom-2 rounded-full p-1.5 transition-opacity ${
+                className={`absolute right-2 bottom-2 z-10 flex min-h-11 min-w-11 items-center justify-center rounded-full transition-all ${
                   selected.has(p.id)
-                    ? 'text-white opacity-100 drop-shadow'
-                    : 'text-white/90 opacity-0 drop-shadow group-hover:opacity-100 max-sm:opacity-70'
+                    ? 'bg-accent text-white shadow-lg dark:bg-accent-dark'
+                    : 'bg-black/40 text-white/90 backdrop-blur-sm hover:bg-black/60 max-sm:opacity-100 sm:opacity-0 sm:group-hover:opacity-100'
                 } disabled:opacity-30`}
               >
-                <HeartIcon filled={selected.has(p.id)} className="h-5 w-5" />
+                <HeartIcon filled={selected.has(p.id)} className="h-6 w-6" />
               </button>
             )}
           />
