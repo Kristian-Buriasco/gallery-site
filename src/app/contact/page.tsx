@@ -1,4 +1,5 @@
 import SiteHeader from '@/components/SiteHeader';
+import SiteFooter from '@/components/SiteFooter';
 import { whatsappHref, whatsappLabel } from '@/lib/contact-links';
 import { getSetting } from '@/lib/settings';
 
@@ -84,6 +85,7 @@ export default function ContactPage() {
           </>
         )}
       </main>
+      <SiteFooter />
     </div>
   );
 }

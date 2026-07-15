@@ -24,6 +24,7 @@ export async function GET() {
     contactEmail: getSetting('contactEmail') ?? '',
     contactInstagram: getSetting('contactInstagram') ?? '',
     contactWhatsapp: getSetting('contactWhatsapp') ?? '',
+    footerContent: getSetting('footerContent') ?? '',
     hasWatermark: fs.existsSync(watermarkPath()),
   });
 }
@@ -80,6 +81,9 @@ export async function POST(req: Request) {
   }
   if (typeof body.contactWhatsapp === 'string') {
     setCapped('contactWhatsapp', body.contactWhatsapp.trim(), SHORT_MAX);
+  }
+  if (typeof body.footerContent === 'string') {
+    setCapped('footerContent', body.footerContent, INTRO_MAX);
   }
   return json({ ok: true });
 }

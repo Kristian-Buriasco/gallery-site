@@ -11,6 +11,7 @@ import {
   getDistinctPhotoTagsForClientGallery,
   getPhotoTagMapForClient,
 } from '@/lib/tags';
+import AdminEditLink from '@/components/AdminEditLink';
 import PasswordGate from './PasswordGate';
 import GalleryClient from './GalleryClient';
 
@@ -93,6 +94,8 @@ export default async function ClientGalleryPage({
   const photoTagIds = getPhotoTagMapForClient(gallery.id);
 
   return (
+    <>
+      <AdminEditLink href={`/admin/galleries/${gallery.id}`} label="Edit gallery" />
     <GalleryClient
       slug={slug}
       title={gallery.title}
@@ -115,5 +118,6 @@ export default async function ClientGalleryPage({
       photoTagIds={photoTagIds}
       tagOptions={tagOptions}
     />
+    </>
   );
 }

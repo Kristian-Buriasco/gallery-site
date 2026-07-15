@@ -436,6 +436,29 @@ export function AdminSectionsPanel({
     await load();
   }
 
+  async function renameSection(id: string, current: string) {
+    const title = window.prompt('Rename section', current)?.trim();
+    if (!title || title === current) return;
+    await fetch(`/api/admin/galleries/${galleryId}/sections`, {
+      method: 'PATCH',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ id, title }),
+    });
+    await load();
+  }
+
+  async function deleteSection(id: string, title: string) {
+    if (!confirm(`Delete section "${title}"? Its photos become ungrouped.`)) return;
+    await fetch(`/api/admin/galleries/${galleryId}/sections`, {
+      method: 'DELETE',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ id }),
+    });
+    const res = await fetch(`/api/admin/galleries/${galleryId}/photos`);
+    if (res.ok) onPhotosChange(await res.json());
+    await load();
+  }
+
   async function bulk(action: string, extra: Record<string, unknown> = {}) {
     if (selected.size === 0) return;
     if (action === 'delete' && !confirm(`Delete ${selected.size} photos?`)) return;
@@ -572,11 +595,25 @@ export function AdminSectionsPanel({
 
       <ul className="space-y-2 text-xs">
         {sections.map((s) => (
-          <li key={s.id} className="flex flex-wrap items-center gap-2">
+          <li key={s.id} className="flex flex-wrap items-center gap-3">
             <span className="font-medium">{s.title}</span>
             <button
               type="button"
-              className="underline"
+              className="text-accent hover:underline dark:text-accent-dark"
+              onClick={() => renameSection(s.id, s.title)}
+            >
+              Rename
+            </button>
+            <button
+              type="button"
+              className="text-red-500 hover:underline"
+              onClick={() => deleteSection(s.id, s.title)}
+            >
+              Delete
+            </button>
+            <button
+              type="button"
+              className="underline disabled:opacity-40"
               disabled={selected.size === 0}
               onClick={() => setMovePreview(s.id)}
             >

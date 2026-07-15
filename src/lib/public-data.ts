@@ -17,9 +17,9 @@ export function getPublishedPortfolioGalleries() {
 
 /** Selected Work: featured portfolios, or all if none featured. */
 export function getSelectedWorkGalleries() {
-  const all = getPublishedPortfolioGalleries();
-  const featured = all.filter((g) => g.featured);
-  return featured.length > 0 ? featured : all;
+  // Only explicitly-featured galleries. If none are featured, the homepage
+  // shows no "Selected Work" section at all (the caller checks length).
+  return getPublishedPortfolioGalleries().filter((g) => g.featured);
 }
 
 export function getReadyPhotos(galleryId: string) {

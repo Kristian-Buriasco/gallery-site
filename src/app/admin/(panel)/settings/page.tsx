@@ -26,6 +26,7 @@ export default async function AdminSettingsPage() {
         initialContactEmail={getSetting('contactEmail') ?? ''}
         initialContactInstagram={getSetting('contactInstagram') ?? ''}
         initialContactWhatsapp={getSetting('contactWhatsapp') ?? ''}
+        initialFooterContent={getSetting('footerContent') ?? ''}
         hasWatermark={fs.existsSync(watermarkPath())}
       />
     </div>

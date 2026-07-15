@@ -1,5 +1,6 @@
 import Link from 'next/link';
 import SiteHeader from '@/components/SiteHeader';
+import SiteFooter from '@/components/SiteFooter';
 import Reveal from '@/components/Reveal';
 import { getSetting } from '@/lib/settings';
 import { coverPhotoId, getPublishedPortfolioGalleries, getSelectedWorkGalleries } from '@/lib/public-data';
@@ -102,6 +103,7 @@ export default function HomePage() {
           </div>
         </section>
       )}
+      <SiteFooter />
     </div>
   );
 }

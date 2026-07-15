@@ -13,6 +13,7 @@ export default function SettingsForm({
   initialContactEmail,
   initialContactInstagram,
   initialContactWhatsapp,
+  initialFooterContent,
   hasWatermark,
 }: {
   initialAbout: string;
@@ -24,6 +25,7 @@ export default function SettingsForm({
   initialContactEmail: string;
   initialContactInstagram: string;
   initialContactWhatsapp: string;
+  initialFooterContent: string;
   hasWatermark: boolean;
 }) {
   const router = useRouter();
@@ -38,6 +40,7 @@ export default function SettingsForm({
   const [contactEmail, setContactEmail] = useState(initialContactEmail);
   const [contactInstagram, setContactInstagram] = useState(initialContactInstagram);
   const [contactWhatsapp, setContactWhatsapp] = useState(initialContactWhatsapp);
+  const [footer, setFooter] = useState(initialFooterContent);
   const [saving, setSaving] = useState(false);
   const [saved, setSaved] = useState(false);
   const [wmBusy, setWmBusy] = useState(false);
@@ -59,6 +62,7 @@ export default function SettingsForm({
         contactEmail,
         contactInstagram,
         contactWhatsapp,
+        footerContent: footer,
       }),
     });
     setSaving(false);
@@ -215,6 +219,19 @@ export default function SettingsForm({
             maxLength={200}
             placeholder="kristianburiasco"
             className="w-full border-b border-neutral-300 bg-transparent py-2 text-sm outline-none focus:border-neutral-900 dark:border-neutral-700"
+          />
+        </label>
+        <label className="block">
+          <span className="mb-2 block text-xs text-neutral-500 dark:text-neutral-400">
+            Footer text (shown at the bottom of public pages)
+          </span>
+          <textarea
+            value={footer}
+            onChange={(e) => setFooter(e.target.value)}
+            rows={2}
+            maxLength={2000}
+            placeholder="e.g. Based in Torino · Available worldwide"
+            className={textareaClass}
           />
         </label>
         <button
