@@ -29,7 +29,7 @@ export default async function RootLayout({
         <script dangerouslySetInnerHTML={{ __html: themeScript }} />
         {analyticsHtml ? <AnalyticsHead html={analyticsHtml} /> : null}
       </head>
-      <body className="min-h-screen bg-[#fafafa] text-neutral-900 antialiased dark:bg-[#0a0a0a] dark:text-neutral-100">
+      <body className="min-h-screen bg-paper text-ink antialiased dark:bg-paper-dark dark:text-ink-dark">
         {children}
       </body>
     </html>
