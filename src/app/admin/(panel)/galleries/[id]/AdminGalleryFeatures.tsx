@@ -456,6 +456,22 @@ export function AdminSectionsPanel({
     await load();
   }
 
+  async function moveSection(index: number, dir: -1 | 1) {
+    const next = index + dir;
+    if (next < 0 || next >= sections.length) return;
+    const order = sections.map((s) => s.id);
+    [order[index], order[next]] = [order[next], order[index]];
+    // optimistic reorder
+    const reordered = order.map((id) => sections.find((s) => s.id === id)!);
+    setSections(reordered);
+    await fetch(`/api/admin/galleries/${galleryId}/sections`, {
+      method: 'PUT',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(order),
+    });
+    await load();
+  }
+
   async function deleteSection(id: string, title: string) {
     if (!confirm(`Delete section "${title}"? Its photos become ungrouped.`)) return;
     await fetch(`/api/admin/galleries/${galleryId}/sections`, {
@@ -603,8 +619,28 @@ export function AdminSectionsPanel({
       </div>
 
       <ul className="space-y-2 text-xs">
-        {sections.map((s) => (
+        {sections.map((s, i) => (
           <li key={s.id} className="flex flex-wrap items-center gap-3">
+            <span className="flex items-center">
+              <button
+                type="button"
+                aria-label="Move up"
+                disabled={i === 0}
+                onClick={() => moveSection(i, -1)}
+                className="px-1 text-neutral-400 hover:text-neutral-900 disabled:opacity-30 dark:hover:text-neutral-100"
+              >
+                ↑
+              </button>
+              <button
+                type="button"
+                aria-label="Move down"
+                disabled={i === sections.length - 1}
+                onClick={() => moveSection(i, 1)}
+                className="px-1 text-neutral-400 hover:text-neutral-900 disabled:opacity-30 dark:hover:text-neutral-100"
+              >
+                ↓
+              </button>
+            </span>
             <span className="font-medium">{s.title}</span>
             <button
               type="button"
