@@ -65,18 +65,33 @@ export default function GalleryAdmin({
   const [selected, setSelected] = useState<Set<string>>(new Set());
   const isClientGallery = gallery.type === 'client';
 
+  // Anchor for shift-click range selection: the id of the last photo toggled
+  // by a plain (non-shift) click. Shift-clicking another photo selects every
+  // photo between the anchor and the target, inclusive (in display order).
+  const selectAnchor = useRef<string | null>(null);
+
   function togglePhotoSelection(photoId: string, e: React.MouseEvent) {
+    if (e.shiftKey && selectAnchor.current && selectAnchor.current !== photoId) {
+      const from = photos.findIndex((p) => p.id === selectAnchor.current);
+      const to = photos.findIndex((p) => p.id === photoId);
+      if (from !== -1 && to !== -1) {
+        const [lo, hi] = from < to ? [from, to] : [to, from];
+        setSelected((prev) => {
+          const next = new Set(prev);
+          for (let i = lo; i <= hi; i++) next.add(photos[i].id);
+          return next;
+        });
+        selectAnchor.current = photoId;
+        return;
+      }
+    }
     setSelected((prev) => {
       const next = new Set(prev);
-      if (e.shiftKey && prev.size > 0) {
-        next.add(photoId);
-      } else if (next.has(photoId)) {
-        next.delete(photoId);
-      } else {
-        next.add(photoId);
-      }
+      if (next.has(photoId)) next.delete(photoId);
+      else next.add(photoId);
       return next;
     });
+    selectAnchor.current = photoId;
   }
 
   // ---- status polling while anything is processing ----

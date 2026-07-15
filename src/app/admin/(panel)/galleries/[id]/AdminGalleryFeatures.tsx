@@ -803,6 +803,11 @@ export function AdminSectionsPanel({
         ))}
       </div>
 
+      {photos.length > 1 && (
+        <p className="text-[11px] text-neutral-400">
+          Tip: click to select, <kbd className="rounded border border-neutral-300 px-1 dark:border-neutral-700">Shift</kbd>-click to select a range.
+        </p>
+      )}
       {photosBySection.map((group) => (
         <div key={group.id ?? 'ungrouped'} className="space-y-2">
           <h3 className="text-xs font-medium tracking-widest text-neutral-500 uppercase">
