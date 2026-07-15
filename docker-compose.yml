@@ -1,10 +1,10 @@
 services:
   gallery:
     # Published images (pin a version in production instead of :latest):
-    #   ghcr.io/kristian-buriasco/gallery-site:latest
-    #   kristianburiasco/gallery-site:latest
+    #   ghcr.io/kristian-buriasco/albm:latest
+    #   kristianburiasco/albm:latest
     # Or build locally: `docker compose up --build`
-    image: ghcr.io/kristian-buriasco/gallery-site:latest
+    image: ghcr.io/kristian-buriasco/albm:latest
     build: .
     restart: unless-stopped
     ports:
@@ -18,7 +18,7 @@ services:
       ADMIN_PASSWORD_HASH: ${ADMIN_PASSWORD_HASH:-}
       # Public HTTPS origin (used for share links + WebAuthn/passkeys).
       BASE_URL: ${BASE_URL:-http://localhost:3200}
-      NEXT_PUBLIC_SITE_NAME: ${NEXT_PUBLIC_SITE_NAME:-Gallery}
+      NEXT_PUBLIC_SITE_NAME: ${NEXT_PUBLIC_SITE_NAME:-Albm}
       # Set to 1 to disable the daily GitHub release check.
       DISABLE_UPDATE_CHECK: ${DISABLE_UPDATE_CHECK:-}
     volumes:

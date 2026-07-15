@@ -45,7 +45,7 @@ jobs:
           ver="${{ steps.ver.outputs.version }}"
           tags="ghcr.io/${repo}:${ver},ghcr.io/${repo}:latest"
           if [ "${{ vars.PUBLISH_DOCKERHUB }}" = "true" ]; then
-            dh="${{ secrets.DOCKERHUB_USERNAME }}/gallery-site"
+            dh="${{ secrets.DOCKERHUB_USERNAME }}/albm"
             tags="${tags},${dh}:${ver},${dh}:latest"
           fi
           echo "tags=${tags}" >> "$GITHUB_OUTPUT"

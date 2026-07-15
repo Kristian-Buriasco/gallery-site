@@ -2,7 +2,7 @@ import fs from 'node:fs';
 import path from 'node:path';
 
 /** Repo to check for releases; overridable so forks can point at their own. */
-const UPDATE_REPO = process.env.UPDATE_REPO ?? 'Kristian-Buriasco/gallery-site';
+const UPDATE_REPO = process.env.UPDATE_REPO ?? 'Kristian-Buriasco/Albm';
 const CACHE_MS = 24 * 60 * 60 * 1000;
 
 let cachedCurrent: string | null = null;

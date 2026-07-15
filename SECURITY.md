@@ -2,7 +2,7 @@
 
 ## Security model
 
-gallery-site is a **single-admin, self-hosted** app. There is one admin
+Albm is a **single-admin, self-hosted** app. There is one admin
 identity (password and/or passkeys); there are no visitor accounts. Client
 galleries are reached at unguessable URLs and may be individually
 password-protected. TLS is expected to be terminated by a reverse proxy in

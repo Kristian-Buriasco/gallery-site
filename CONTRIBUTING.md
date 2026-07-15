@@ -1,6 +1,6 @@
 # Contributing
 
-Thanks for your interest in gallery-site.
+Thanks for your interest in Albm.
 
 ## Dev setup
 

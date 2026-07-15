@@ -6,10 +6,10 @@
 
 One Next.js app: a public portfolio, private client galleries at unguessable URLs, photo proofing, passkey admin login, and safe self-hosted upgrades. SQLite and local files. No external services.
 
-[![Release](https://img.shields.io/github/v/release/Kristian-Buriasco/gallery-site?color=111)](https://github.com/Kristian-Buriasco/gallery-site/releases)
-[![CI](https://github.com/Kristian-Buriasco/gallery-site/actions/workflows/ci.yml/badge.svg)](https://github.com/Kristian-Buriasco/gallery-site/actions/workflows/ci.yml)
+[![Release](https://img.shields.io/github/v/release/Kristian-Buriasco/Albm?color=111)](https://github.com/Kristian-Buriasco/Albm/releases)
+[![CI](https://github.com/Kristian-Buriasco/Albm/actions/workflows/ci.yml/badge.svg)](https://github.com/Kristian-Buriasco/Albm/actions/workflows/ci.yml)
 [![License: AGPL-3.0](https://img.shields.io/badge/license-AGPL--3.0-blue)](LICENSE)
-[![Container: GHCR](https://img.shields.io/badge/ghcr.io-gallery--site-2496ED?logo=docker&logoColor=white)](https://github.com/Kristian-Buriasco/gallery-site/pkgs/container/gallery-site)
+[![Container: GHCR](https://img.shields.io/badge/ghcr.io-albm-2496ED?logo=docker&logoColor=white)](https://github.com/Kristian-Buriasco/Albm/pkgs/container/albm)
 
 </div>
 
@@ -67,8 +67,8 @@ One Next.js app: a public portfolio, private client galleries at unguessable URL
 ## Quick start (Docker)
 
 ```bash
-git clone https://github.com/Kristian-Buriasco/gallery-site.git
-cd gallery-site
+git clone https://github.com/Kristian-Buriasco/Albm.git
+cd Albm
 
 export SESSION_SECRET=$(openssl rand -hex 32)
 export BASE_URL=https://gallery.example.com   # your real https origin
@@ -79,11 +79,11 @@ docker compose logs -f            # first run prints a temporary admin password
 
 Open the site, log in at `/admin/login` with the printed password, then add a passkey under **Settings → Security**. Put a reverse proxy (Caddy, nginx, NPM) in front for HTTPS — passkeys require a secure origin.
 
-Prebuilt images: **`ghcr.io/kristian-buriasco/gallery-site`** (pin a version in production instead of `:latest`).
+Prebuilt images: **`ghcr.io/kristian-buriasco/albm`** (pin a version in production instead of `:latest`).
 
 ```bash
 docker run -e SESSION_SECRET=$(openssl rand -hex 32) -v gallery:/data \
-  -p 3200:3200 ghcr.io/kristian-buriasco/gallery-site:latest
+  -p 3200:3200 ghcr.io/kristian-buriasco/albm:latest
 ```
 
 ## Configuration
@@ -97,7 +97,7 @@ Copy `.env.example` to `.env` (or set these in the compose environment):
 | `BASE_URL` | Public https origin (share links + WebAuthn). `https://gallery.example.com` |
 | `DATA_DIR` | Runtime data root (Docker volume, default `/data`) |
 | `PORT` | HTTP port (default `3200`; TLS terminated upstream) |
-| `NEXT_PUBLIC_SITE_NAME` | Site name in headers/titles. Default in `.env.example` is `Gallery`; set to **Albm** or your studio name |
+| `NEXT_PUBLIC_SITE_NAME` | Site name in headers/titles. Default in `.env.example` is `Albm`; set to **Albm** or your studio name |
 | `RP_ID` | Optional WebAuthn RP ID override (defaults to host of `BASE_URL`) |
 | `DISABLE_UPDATE_CHECK` | `1` to disable the daily GitHub release check |
 

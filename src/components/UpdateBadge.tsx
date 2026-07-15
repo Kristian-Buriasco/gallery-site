@@ -28,7 +28,7 @@ export default function UpdateBadge() {
 
   return (
     <a
-      href={`https://github.com/Kristian-Buriasco/gallery-site/releases/tag/v${info.latest}`}
+      href={`https://github.com/Kristian-Buriasco/Albm/releases/tag/v${info.latest}`}
       target="_blank"
       rel="noreferrer"
       title={`You're on v${info.current}. v${info.latest} is available.`}
