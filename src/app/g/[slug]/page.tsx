@@ -3,7 +3,8 @@ import { notFound } from 'next/navigation';
 import { and, asc, eq } from 'drizzle-orm';
 import { getDb, schema } from '@/db';
 import { getVisitorSession, hasGalleryAccess, isAdmin } from '@/lib/session';
-import { getReadyPhotos } from '@/lib/public-data';
+import { coverPhotoId, getReadyPhotos } from '@/lib/public-data';
+import { BASE_URL } from '@/lib/env';
 import { buildSectionPayloads } from '@/lib/gallery-page-data';
 import { isGalleryExpired } from '@/lib/downloads';
 import { recordGalleryView } from '@/lib/views';
@@ -17,9 +18,35 @@ import GalleryClient from './GalleryClient';
 
 export const dynamic = 'force-dynamic';
 
-export async function generateMetadata(): Promise<Metadata> {
+export async function generateMetadata({
+  params,
+}: {
+  params: Promise<{ slug: string }>;
+}): Promise<Metadata> {
+  // Client galleries are never search-indexed. But when "Link preview" is on,
+  // emit an OpenGraph card (cover + title) so sharing the album link shows a
+  // preview in chat apps. The cover only loads for published, non-password
+  // galleries (the image route auth-checks it), which keeps private ones private.
+  const base: Metadata = { robots: { index: false, follow: false } };
+  const { slug } = await params;
+  const gallery = getDb()
+    .select()
+    .from(schema.galleries)
+    .where(and(eq(schema.galleries.slug, slug), eq(schema.galleries.type, 'client')))
+    .get();
+  if (!gallery || !gallery.published || !gallery.socialPreview) return base;
+  const cover = coverPhotoId(gallery);
+  if (!cover) return { ...base, title: gallery.title };
+  const imageUrl = `${BASE_URL}/img/${cover}/web`;
   return {
-    robots: { index: false, follow: false },
+    ...base,
+    title: gallery.title,
+    openGraph: { title: gallery.title, images: [{ url: imageUrl }] },
+    twitter: {
+      card: 'summary_large_image',
+      title: gallery.title,
+      images: [imageUrl],
+    },
   };
 }
 

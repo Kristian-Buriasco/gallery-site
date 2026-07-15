@@ -225,12 +225,21 @@ export function AdminExtraSettings({
           />
         </label>
       </div>
-      {!isClient && (
-        <ToggleSwitch
-          label="Social / OG preview"
-          checked={gallery.socialPreview}
-          onChange={(v) => patchGallery({ socialPreview: v })}
-        />
+      <ToggleSwitch
+        label={
+          isClient
+            ? 'Link preview (show cover when the album link is shared)'
+            : 'Social / OG preview'
+        }
+        checked={gallery.socialPreview}
+        onChange={(v) => patchGallery({ socialPreview: v })}
+      />
+      {isClient && (
+        <p className="-mt-1 text-[11px] text-neutral-400">
+          Shows a preview in chat apps when you share the link. Works for
+          published galleries without a password (the gallery still isn&apos;t
+          search-indexed).
+        </p>
       )}
       {isClient && (
         <>
