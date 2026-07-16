@@ -2,9 +2,9 @@
 
 # Albm
 
-**Self-hosted photography portfolio and client proofing — a Pic-Time replacement you own.**
+**Self-hosted photography portfolio and client proofing galleries you own.**
 
-One Next.js app: public portfolio, private client galleries at unguessable URLs, photo proofing, event self-service, passkey admin login, and safe self-hosted upgrades. SQLite and local files. No external services required.
+Public portfolio, private client galleries, downloads, event tools, and passkey admin — one Next.js app on SQLite and local files. No external services required.
 
 [![Release](https://img.shields.io/github/v/release/Kristian-Buriasco/Albm?color=111)](https://github.com/Kristian-Buriasco/Albm/releases)
 [![CI](https://github.com/Kristian-Buriasco/Albm/actions/workflows/ci.yml/badge.svg)](https://github.com/Kristian-Buriasco/Albm/actions/workflows/ci.yml)
@@ -17,99 +17,27 @@ One Next.js app: public portfolio, private client galleries at unguessable URLs,
 
 ## Screenshots
 
-| Public portfolio | Client gallery |
+### Public site
+
+| Homepage | Contact |
 |---|---|
-| ![Homepage with Featured Work](docs/screenshots/portfolio.png) | ![Client proofing grid](docs/screenshots/client-gallery.png) |
-
-| Lightbox & selections | Contact |
-|---|---|
-| ![Lightbox with favorites and slideshow](docs/screenshots/client-lightbox.png) | ![Contact with Instagram and WhatsApp](docs/screenshots/contact.png) |
-
-| Admin dashboard | Gallery detail |
-|---|---|
-| ![Admin dashboard with charts](docs/screenshots/admin.png) | ![Sections, tags, and bulk select](docs/screenshots/admin-gallery.png) |
-
-| Security | Audit log |
-|---|---|
-| ![Passkeys and recovery codes](docs/screenshots/security.png) | ![Admin audit log](docs/screenshots/audit.png) |
-
-| Event self-service |
-|---|
-| ![Public event page with bib search](docs/screenshots/event-page.png) |
-
-## Features
-
-### Portfolio
-
-- Homepage **Featured Work** and **More Work** grids; per-card shoot location
-- Work-tab search by title, tag chips, and year
-- Editable hero, about, contact, and footer copy from admin
-- Portfolio lightbox with optional anonymous likes; sort by like count
-- Open Graph previews for portfolio galleries when enabled
+| ![Homepage with Featured Work](docs/screenshots/portfolio.png) | ![Contact with Instagram and WhatsApp](docs/screenshots/contact.png) |
 
 ### Client proofing
 
-- Unguessable slug URLs; optional password, 6-digit PIN, and auto-expiry
-- Sections, folder upload (optional map subfolders → sections), drag-reorder, one-shot sort
-- Photo tags with filter chips in gallery and admin
-- Always `noindex`; optional link-preview OG card (cover + title only)
-- Per-visitor favorites, optional selection limits, moderated comments
-- Up to 5 favorite lists per visitor; ZIP and admin CSV export per list
-- Magic-link client accounts (“Save my selections” → copyable link + QR, no SMTP); does not bypass password/PIN
+| Gallery grid | Lightbox & favorites | Event page |
+|---|---|---|
+| ![Client proofing grid](docs/screenshots/client-gallery.png) | ![Lightbox with favorites and slideshow](docs/screenshots/client-lightbox.png) | ![Public event page with bib search](docs/screenshots/event-page.png) |
 
-### Delivery & protection
+### Admin
 
-- Downloads when enabled: single photo, full-gallery ZIP, or favorites-only ZIP (streamed; no temp files)
-- Multi-resolution downloads (optional per gallery): Web, Print (~3000px), and/or Original
-- GPS stripped on download by default; optional keep of non-GPS EXIF
-- Visible watermark (position, opacity, scale) plus optional gallery-specific PNG
-- RAW / DNG ingest (optional): working JPEG for clients unless **Deliver RAW** is on (uploads up to 100 MB)
-- Invisible forensic watermark (optional, **default off**): per-download stego mark + decode at `/admin/forensic`
-- EXIF on request (**GPS is never stored** in the DB / never shown in the viewer)
+| Dashboard | Gallery detail | Security | Audit |
+|---|---|---|---|
+| ![Admin dashboard with charts](docs/screenshots/admin.png) | ![Sections, tags, and bulk select](docs/screenshots/admin-gallery.png) | ![Passkeys and recovery codes](docs/screenshots/security.png) | ![Admin audit log](docs/screenshots/audit.png) |
 
-### Event self-service
+---
 
-All of the following are **per-gallery options, default off**:
-
-- Live upload / auto-publish — publish API pushes go live as processing finishes; client gallery polls with a Live badge
-- Bib-number search — OCR at upload; attendees search at `/g/[slug]/find` (“photos matching #NNN”)
-- Face search — overnight/admin batch embeddings; attendee selfie match **in memory, never stored** (biometric; notice-gated)
-- Public event page — `/g/[slug]/event` with bib/selfie search and venue QR via ShareTools
-
-### Admin & ops
-
-- Passkeys (WebAuthn), one-time recovery codes, optional password login
-- Stats with inline SVG charts, disk usage, bulk photo actions
-- **Show in Featured Work** picker; **new-gallery defaults** under Settings
-- Admin gallery folders (client / year / event — invisible on the public site)
-- Upload tokens for the external publish API (hashed; shown once) — see [`docs/EXPORT.md`](docs/EXPORT.md)
-- Audit log at `/admin/audit` (read-only, pruned)
-- Session management — list/revoke admin sessions under Settings
-- CSV and filename export for client selections
-- Optional gallery collaborators (scoped invites + passkeys)
-- Safe upgrades: DB backed up before every migration; failed migration aborts boot
-- Self-contained UI (no external CDN, fonts, or trackers)
-- Optional daily GitHub release check — disable with `DISABLE_UPDATE_CHECK=1`
-- Persistent rate-limit store in SQLite; cookie consent gates optional analytics
-
-### Security
-
-- Single-admin (plus optional scoped collaborators), self-hosted
-- See [SECURITY.md](SECURITY.md) for the threat model and private vulnerability reporting
-
-### Host notes (mini / older macOS)
-
-Bib OCR and face search use **WASM** stacks so they build on older Apple clang / macOS 10.13-class hosts without native ONNX/tfjs-node. Face batch is offline/admin-triggered, not real-time. Optional `dcraw` improves proprietary RAW decode (`DCRAW_PATH` if not on `PATH`).
-
-## Roadmap
-
-**Shipped** — client proofing, portfolio, passkeys, PIN/password gates, watermarking, sections, EXIF (GPS excluded), cover/link-preview/focal pickers, shift-select, CSV export, QR share, LQIP/retina, slideshow, PWA, sitemap/feeds/JSON-LD, EN/NL/IT, Docker + GHCR, live upload, RAW, forensic mark, multi-res download, GPS strip, bib/face search, event page, gallery collaborators, audit, presets, publish API, folders, work search, favorite lists, magic links, rate-limit store, sessions, consent.
-
-**Later — scale-out** (when needed): object-storage backend, multi-photographer / studio mode.
-
-Explicitly out of scope for now: automated backups, email/SMTP notifications.
-
-## Quick start (Docker)
+## Quick start
 
 ```bash
 git clone https://github.com/Kristian-Buriasco/Albm.git
@@ -122,53 +50,94 @@ docker compose up -d --build
 docker compose logs -f            # first run prints a temporary admin password
 ```
 
-Open the site, log in at `/admin/login` with the printed password, then add a passkey under **Settings → Security**. Put a reverse proxy (Caddy, nginx, NPM) in front for HTTPS — passkeys require a secure origin.
+1. Open the site → log in at `/admin/login` with the password from the logs  
+2. Add a passkey under **Settings → Security**  
+3. Put a reverse proxy (Caddy, nginx, NPM) in front for HTTPS — passkeys need a secure origin  
 
-Prebuilt images: **`ghcr.io/kristian-buriasco/albm`** (pin a version in production instead of `:latest`).
+Prebuilt image: **`ghcr.io/kristian-buriasco/albm`** (pin a version in production, not `:latest`).
 
 ```bash
 docker run -e SESSION_SECRET=$(openssl rand -hex 32) -v gallery:/data \
   -p 3200:3200 ghcr.io/kristian-buriasco/albm:latest
 ```
 
+> **Photographers / self-hosters:** continue with [Configuration](#configuration) and [Updating](#updating) below.  
+> **Contributors:** jump to [Development](#development).
+
+---
+
+## What you can do
+
+> Many extras (live upload, bib/face search, forensic watermark, event page, …) are **off by default per gallery**. Turn on only what you need.
+
+### Show your work
+- Featured and More Work grids, searchable by title, tags, and year
+- Editable hero, about, contact, and footer from admin
+- Portfolio lightbox with optional anonymous likes
+
+### Proof with clients
+- Private galleries at unguessable URLs; optional password, PIN, and expiry
+- Sections, tags, favorites, moderated comments, and selection limits
+- Magic-link “Save my selections” (copyable link + QR; no email server)
+
+### Deliver files
+- Single photo, full-gallery ZIP, or favorites-only ZIP when downloads are enabled
+- Optional Web / Print / Original sizes; GPS stripped on download by default
+- Visible watermark; optional invisible forensic mark (default off)
+
+### Run events
+- Live upload while a shoot is in progress
+- Bib-number search and selfie face match for attendees (opt-in; face match stays in memory)
+- Public event page with venue QR
+
+### Run the box
+- Passkey login, recovery codes, audit log, session revoke
+- Safe upgrades (DB backed up before each migration)
+- Optional gallery collaborators; upload tokens for Lightroom / Capture One — see [`docs/EXPORT.md`](docs/EXPORT.md)
+
+Threat model and vulnerability reporting: [SECURITY.md](SECURITY.md).
+
+---
+
 ## Configuration
 
-Copy `.env.example` to `.env` (or set these in the compose environment):
+Copy `.env.example` to `.env` (or set these in Compose):
 
 | Var | Purpose |
 |---|---|
-| `SESSION_SECRET` | **Required in prod.** Signs/encrypts cookies. `openssl rand -hex 32` |
-| `ADMIN_PASSWORD_HASH` | bcrypt hash. Empty → temp password printed on first run. `node scripts/hash-password.mjs 'pw'` |
-| `BASE_URL` | Public https origin (share links + WebAuthn). `https://gallery.example.com` |
+| `SESSION_SECRET` | **Required in prod.** `openssl rand -hex 32` |
+| `ADMIN_PASSWORD_HASH` | bcrypt hash; empty → temp password in logs. `node scripts/hash-password.mjs 'pw'` |
+| `BASE_URL` | Public https origin (share links + passkeys) |
 | `DATA_DIR` | Runtime data root (Docker volume, default `/data`) |
-| `PORT` | HTTP port (default `3200`; TLS terminated upstream) |
-| `NEXT_PUBLIC_SITE_NAME` | Site name in headers/titles. Default `Albm` |
-| `RP_ID` | Optional WebAuthn RP ID override (defaults to host of `BASE_URL`) |
-| `DISABLE_UPDATE_CHECK` | `1` to disable the daily GitHub release check |
+| `PORT` | HTTP port (default `3200`) |
+| `NEXT_PUBLIC_SITE_NAME` | Site name (default `Albm`) |
+| `RP_ID` | Optional WebAuthn RP ID override |
+| `DISABLE_UPDATE_CHECK` | `1` to skip the daily GitHub release check |
 
-All photos and the SQLite DB live under `DATA_DIR`; nothing there is served statically — every image byte goes through an auth-checked handler.
+All photos and the SQLite DB live under `DATA_DIR`. Nothing there is served statically — every image goes through an auth-checked handler.
 
 ```
 DATA_DIR/
   gallery.db
-  backups/gallery-<timestamp>.db     # pre-migration snapshots
+  backups/gallery-<timestamp>.db
   photos/<galleryId>/{originals,web,thumb,print}/…
 ```
 
-**Back up `DATA_DIR`** — it is your galleries and database.
+**Back up `DATA_DIR`** — that is your galleries and database.
 
-External publish (Lightroom / Capture One / curl): create an upload token in **Settings → Upload tokens**, then see [`docs/EXPORT.md`](docs/EXPORT.md).
+---
 
 ## Updating
 
-- **Docker:** `docker compose pull && docker compose up -d`. Migrations apply on boot after backing up the DB.
-- The admin panel shows a badge when a newer release exists (opt out with `DISABLE_UPDATE_CHECK=1`).
+```bash
+docker compose pull && docker compose up -d
+```
 
-### Monitoring
+Migrations run on boot after backing up the DB. The admin panel badges newer releases (opt out with `DISABLE_UPDATE_CHECK=1`).
 
-`GET /api/health` returns `{ ok: true }` when the database is readable (no auth, no extra metadata). Point Uptime Kuma, Home Assistant, or any HTTP monitor at `https://your-domain/api/health` — expect 200 when healthy, 500 when the DB is unavailable. The Docker image `HEALTHCHECK` uses the same endpoint.
+**Health check:** `GET /api/health` → `{ ok: true }` when the DB is readable. Point Uptime Kuma / Home Assistant at it (200 healthy, 500 if DB is down). The image `HEALTHCHECK` uses the same endpoint.
 
-## Bare-metal (without Docker)
+### Bare-metal (no Docker)
 
 ```bash
 npm ci && npm run build
@@ -176,11 +145,17 @@ cp -r .next/static .next/standalone/.next/static
 SESSION_SECRET=… BASE_URL=… DATA_DIR=/var/lib/gallery/data node .next/standalone/server.js
 ```
 
-Templates in [`deploy/`](deploy): a `systemd` unit and an `update.sh` helper. Native modules (`sharp`, `better-sqlite3`) must be built for the host platform (`npm rebuild`). On older toolchains that cannot compile `better-sqlite3` v12 (needs C++20), pin **`better-sqlite3@11.10.0`** (already pinned in this repo).
+Templates in [`deploy/`](deploy): `systemd` unit and `update.sh`. Rebuild native modules for the host (`npm rebuild`). On older toolchains that cannot compile `better-sqlite3` v12, pin **`better-sqlite3@11.10.0`** (already pinned here).
 
-When setting `ADMIN_PASSWORD_HASH` in a shell or `.env` file, escape `$` in the bcrypt hash (e.g. wrap in single quotes) — otherwise `$2b$…` can be mangled by the shell or env loader.
+When setting `ADMIN_PASSWORD_HASH`, wrap the bcrypt hash in single quotes so `$2b$…` is not mangled by the shell.
+
+**Host notes (older macOS):** Bib OCR and face search use WASM so they build without native ONNX. Optional `dcraw` improves proprietary RAW decode (`DCRAW_PATH` if not on `PATH`).
+
+---
 
 ## Development
+
+For contributors working on the code:
 
 ```bash
 npm ci
@@ -190,18 +165,26 @@ npm run dev               # http://localhost:3200
 
 See [CONTRIBUTING.md](CONTRIBUTING.md). Checks: `npm run typecheck`, `npm run lint`, `npm run build`.
 
-E2E (Playwright; boots a throwaway data dir via the suite setup):
-
 ```bash
 npm run test:e2e:install   # once
-npm run test:e2e
+npm run test:e2e           # Playwright; throwaway data dir
 ```
 
 CI runs typecheck, lint, build, and `test:e2e` on PRs.
 
-## Stack
+**Stack:** Next.js 15 (App Router, standalone) · SQLite + Drizzle + better-sqlite3 · sharp · Tailwind · iron-session · `@simplewebauthn` · Playwright. Optional: `tesseract.js`, `@vladmandic/face-api` + WASM TensorFlow. Required native modules: `sharp`, `better-sqlite3`.
 
-Next.js 15 (App Router, standalone) · SQLite + Drizzle + better-sqlite3 (WAL, migrations at boot) · sharp (in-process queue) · Tailwind · iron-session · `@simplewebauthn` · archiver · Playwright (E2E). Optional ML/OCR: `tesseract.js`, `@vladmandic/face-api` + `@tensorflow/tfjs-backend-wasm`. Only required native modules: `sharp`, `better-sqlite3`.
+---
+
+## Roadmap
+
+**Shipped** — portfolio, client proofing, passkeys, downloads/watermarks, events (live/bib/face), collaborators, publish API, Docker + GHCR, and the rest of the feature list above.
+
+**Later (when needed):** object-storage backend, multi-photographer / studio mode.
+
+Out of scope for now: automated backups, email/SMTP notifications.
+
+---
 
 ## License
 
