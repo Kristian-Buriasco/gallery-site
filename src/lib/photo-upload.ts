@@ -26,6 +26,8 @@ export type UploadPhotoResult =
 export type IngestOptions = {
   /** When true and gallery.autoPublishOnUpload, publish the gallery if still draft. */
   fromPublishApi?: boolean;
+  /** Principal who uploaded: null/omitted = owner, else a collaborators.id. */
+  uploadedBy?: string | null;
 };
 
 /** Shared ingest pipeline for admin + external publish API. */
@@ -175,6 +177,7 @@ export async function ingestGalleryPhoto(
     contentHash,
     isRaw: isRawPhoto,
     format,
+    uploadedBy: opts.uploadedBy ?? null,
   };
   db.insert(schema.photos).values(photo).run();
   enqueueDerivatives(photo.id);

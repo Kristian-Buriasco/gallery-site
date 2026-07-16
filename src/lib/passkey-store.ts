@@ -19,6 +19,16 @@ export function passkeyCount(): number {
   return row.length;
 }
 
+/** Passkeys belonging to a specific collaborator (for exclude-credentials on re-registration). */
+export function listPasskeysForCollaborator(collaboratorId: string): PasskeyRow[] {
+  return getDb()
+    .select()
+    .from(schema.adminCredentials)
+    .where(eq(schema.adminCredentials.collaboratorId, collaboratorId))
+    .orderBy(asc(schema.adminCredentials.createdAt))
+    .all();
+}
+
 export function getPasskeyByCredentialId(
   credentialId: string,
 ): PasskeyRow | undefined {
@@ -44,8 +54,13 @@ export function insertPasskey(row: {
   counter: number;
   transports: string | null;
   label: string;
+  /** Set for a collaborator credential; omit/null for the owner. */
+  collaboratorId?: string | null;
 }): void {
-  getDb().insert(schema.adminCredentials).values(row).run();
+  getDb()
+    .insert(schema.adminCredentials)
+    .values({ ...row, collaboratorId: row.collaboratorId ?? null })
+    .run();
 }
 
 export function updatePasskeyAfterAuth(

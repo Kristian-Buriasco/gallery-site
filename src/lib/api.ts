@@ -1,6 +1,16 @@
 import { NextResponse } from 'next/server';
-import { getPrincipal, isAdmin } from './session';
+import { getPrincipal, isAdmin, type Principal } from './session';
 import { collaboratorHasCapability, type Capability } from './grants';
+
+/** Audit-log actor fields derived from a principal (owner default for null). */
+export function auditActor(
+  principal: Principal | null,
+): { actorType: 'owner' | 'collaborator'; actorId: string | null } {
+  if (principal && principal.role === 'collaborator') {
+    return { actorType: 'collaborator', actorId: principal.collaboratorId };
+  }
+  return { actorType: 'owner', actorId: null };
+}
 
 /** Owner-only gate. Alias kept as requireAdmin for the many existing callers. */
 export async function requireAdmin(): Promise<NextResponse | null> {

@@ -10,20 +10,72 @@ import { pendingCommentCount } from '@/lib/comments';
 import { formatBytes } from '@/lib/disk';
 import { getStorageSnapshot } from '@/lib/storage-cache';
 import { isGalleryExpired } from '@/lib/downloads';
-import { isAdmin } from '@/lib/session';
+import { getPrincipal } from '@/lib/session';
+import { collaboratorGalleryIds } from '@/lib/grants';
 import CreateGalleryButton from './CreateGalleryButton';
 
 export const dynamic = 'force-dynamic';
 
 export default async function AdminDashboard() {
-  if (!(await isAdmin())) redirect('/admin/login');
+  const principal = await getPrincipal();
+  if (!principal) redirect('/admin/login');
+  const isOwner = principal.role === 'owner';
 
   const db = getDb();
-  const galleries = db
+  const allGalleries = db
     .select()
     .from(schema.galleries)
     .orderBy(asc(schema.galleries.sortOrder))
     .all();
+
+  if (!isOwner) {
+    const grantedIds = new Set(collaboratorGalleryIds(principal.collaboratorId));
+    const galleries = allGalleries.filter((g) => grantedIds.has(g.id));
+    const listRows: GalleryListRow[] = galleries.map((g) => ({
+      id: g.id,
+      title: g.title,
+      type: g.type,
+      published: g.published,
+      expiresAt: g.expiresAt,
+      folderId: null,
+      photoCount:
+        db
+          .select({ c: sql<number>`count(*)` })
+          .from(schema.photos)
+          .where(eq(schema.photos.galleryId, g.id))
+          .get()?.c ?? 0,
+      sizeBytes: 0,
+      expired: isGalleryExpired(g),
+    }));
+    return (
+      <div>
+        <div className="mb-6">
+          <h1 className="text-sm font-medium tracking-widest uppercase">Your galleries</h1>
+        </div>
+        {listRows.length === 0 ? (
+          <p className="text-sm text-neutral-500 dark:text-neutral-400">
+            No galleries have been shared with you yet.
+          </p>
+        ) : (
+          <ul className="space-y-2">
+            {listRows.map((r) => (
+              <li key={r.id}>
+                <Link
+                  href={`/admin/galleries/${r.id}`}
+                  className="block border border-neutral-200 px-4 py-3 text-sm hover:border-neutral-400 dark:border-neutral-800 dark:hover:border-neutral-600"
+                >
+                  <span className="font-medium">{r.title}</span>
+                  <span className="ml-2 text-neutral-500">{r.photoCount} photos</span>
+                </Link>
+              </li>
+            ))}
+          </ul>
+        )}
+      </div>
+    );
+  }
+
+  const galleries = allGalleries;
 
   const pendingComments = pendingCommentCount();
   const storage = getStorageSnapshot();

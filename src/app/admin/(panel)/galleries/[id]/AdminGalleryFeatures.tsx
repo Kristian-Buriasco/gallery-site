@@ -728,6 +728,7 @@ export function AdminSectionsPanel({
   onSelectedChange,
   onPhotosChange,
   onTogglePhoto,
+  isOwner = true,
 }: {
   galleryId: string;
   photos: Photo[];
@@ -735,6 +736,8 @@ export function AdminSectionsPanel({
   onSelectedChange: (next: Set<string>) => void;
   onPhotosChange: (photos: Photo[]) => void;
   onTogglePhoto: (photoId: string, e: React.MouseEvent) => void;
+  /** False for a collaborator: hides owner-only bulk actions (delete, cover). */
+  isOwner?: boolean;
 }) {
   const [sections, setSections] = useState<Section[]>([]);
   const [newTitle, setNewTitle] = useState('');
@@ -1047,12 +1050,16 @@ export function AdminSectionsPanel({
         <button type="button" onClick={() => onSelectedChange(new Set())} disabled={selected.size === 0}>
           Clear selection
         </button>
-        <button type="button" onClick={() => bulk('cover')} disabled={selected.size !== 1}>
-          Set cover
-        </button>
-        <button type="button" onClick={() => bulk('delete')} disabled={selected.size === 0}>
-          Delete selected
-        </button>
+        {isOwner && (
+          <button type="button" onClick={() => bulk('cover')} disabled={selected.size !== 1}>
+            Set cover
+          </button>
+        )}
+        {isOwner && (
+          <button type="button" onClick={() => bulk('delete')} disabled={selected.size === 0}>
+            Delete selected
+          </button>
+        )}
       </div>
 
       <div className="flex flex-wrap items-center gap-2 text-xs">

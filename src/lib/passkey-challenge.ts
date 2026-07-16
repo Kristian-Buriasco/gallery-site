@@ -67,6 +67,49 @@ export async function consumeRegisterChallenge(): Promise<string | null> {
   return challenge;
 }
 
+export interface CollabRegisterChallengeData {
+  challenge?: string;
+  challengeAt?: number;
+  collaboratorId?: string;
+}
+
+/** Separate cookie from the owner registration ceremony, scoped to a collaborator. */
+export async function getCollabRegisterChallengeSession(): Promise<
+  IronSession<CollabRegisterChallengeData>
+> {
+  return getIronSession<CollabRegisterChallengeData>(
+    await cookies(),
+    challengeOptions('webauthn_collab_register'),
+  );
+}
+
+export async function storeCollabRegisterChallenge(
+  challenge: string,
+  collaboratorId: string,
+): Promise<void> {
+  const session = await getCollabRegisterChallengeSession();
+  session.challenge = challenge;
+  session.challengeAt = Date.now();
+  session.collaboratorId = collaboratorId;
+  await session.save();
+}
+
+export async function consumeCollabRegisterChallenge(): Promise<{
+  challenge: string;
+  collaboratorId: string;
+} | null> {
+  const session = await getCollabRegisterChallengeSession();
+  const challenge = session.challenge;
+  const at = session.challengeAt;
+  const collaboratorId = session.collaboratorId;
+  session.challenge = undefined;
+  session.challengeAt = undefined;
+  session.collaboratorId = undefined;
+  await session.save();
+  if (!challenge || !at || !collaboratorId || Date.now() - at > CHALLENGE_TTL_MS) return null;
+  return { challenge, collaboratorId };
+}
+
 export async function storeAuthChallenge(challenge: string): Promise<void> {
   const session = await getAuthChallengeSession();
   session.challenge = challenge;

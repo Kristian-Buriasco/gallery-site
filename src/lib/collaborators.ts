@@ -109,6 +109,53 @@ export function inviteCollaborator(opts: {
   return { collaboratorId, rawToken, expiresAt };
 }
 
+/**
+ * Check an onboarding token is still valid (unused, unexpired) WITHOUT
+ * consuming it. Used by the register/options step so a page reload or a
+ * second registration attempt doesn't burn the single-use token.
+ */
+export function peekInvite(
+  rawToken: string,
+): { collaboratorId: string; email: string; galleryTitle: string | null } | null {
+  const db = getDb();
+  const tokenHash = hashToken(rawToken);
+  const rows = db
+    .select()
+    .from(schema.collaboratorInvites)
+    .where(isNull(schema.collaboratorInvites.usedAt))
+    .all();
+  const now = Date.now();
+  for (const row of rows) {
+    if (constantTimeEqual(row.tokenHash, tokenHash)) {
+      if (row.expiresAt < now) return null;
+      const collab = getCollaborator(row.collaboratorId);
+      if (!collab || collab.disabledAt) return null;
+      const grant = db
+        .select({ galleryId: schema.galleryGrants.galleryId })
+        .from(schema.galleryGrants)
+        .where(
+          and(
+            eq(schema.galleryGrants.collaboratorId, row.collaboratorId),
+            eq(schema.galleryGrants.kind, 'collaborator'),
+            isNull(schema.galleryGrants.revokedAt),
+          ),
+        )
+        .get();
+      let galleryTitle: string | null = null;
+      if (grant) {
+        const gallery = db
+          .select({ title: schema.galleries.title })
+          .from(schema.galleries)
+          .where(eq(schema.galleries.id, grant.galleryId))
+          .get();
+        galleryTitle = gallery?.title ?? null;
+      }
+      return { collaboratorId: row.collaboratorId, email: collab.email, galleryTitle };
+    }
+  }
+  return null;
+}
+
 /** Verify an onboarding token (single-use, unexpired). Returns collaboratorId. */
 export function consumeInvite(rawToken: string): { collaboratorId: string } | null {
   const db = getDb();
@@ -122,6 +169,8 @@ export function consumeInvite(rawToken: string): { collaboratorId: string } | nu
   for (const row of rows) {
     if (constantTimeEqual(row.tokenHash, tokenHash)) {
       if (row.expiresAt < now) return null;
+      const collab = getCollaborator(row.collaboratorId);
+      if (!collab || collab.disabledAt) return null;
       db.update(schema.collaboratorInvites)
         .set({ usedAt: now })
         .where(eq(schema.collaboratorInvites.id, row.id))

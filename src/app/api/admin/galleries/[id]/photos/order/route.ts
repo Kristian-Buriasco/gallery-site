@@ -1,13 +1,13 @@
 import { eq, and } from 'drizzle-orm';
 import { getDb, schema } from '@/db';
-import { errorJson, json, requireAdmin } from '@/lib/api';
+import { errorJson, json, requireGalleryCapability } from '@/lib/api';
 
 type Params = { params: Promise<{ id: string }> };
 
 export async function PUT(req: Request, { params }: Params) {
-  const denied = await requireAdmin();
-  if (denied) return denied;
   const { id } = await params;
+  const denied = await requireGalleryCapability(id, 'organize');
+  if (denied) return denied;
 
   let ids: unknown;
   try {

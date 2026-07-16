@@ -78,6 +78,14 @@ export type I18nDict = {
   eventGetPhotos: string;
   browseGallery: string;
   findNearbyHint: string;
+  collabInviteInvalidTitle: string;
+  collabInviteInvalidBody: string;
+  collabSetupTitle: string;
+  collabSetupTitleGallery: string;
+  collabSetupIntro: string;
+  collabSetupButton: string;
+  collabSetupBusy: string;
+  collabSetupDone: string;
 };
 
 const en: I18nDict = {
@@ -157,6 +165,14 @@ const en: I18nDict = {
   matchesSaved: 'Saved to your favorites',
   eventGetPhotos: 'Get your photos',
   browseGallery: 'Browse full gallery',
+  collabInviteInvalidTitle: 'Invite not available',
+  collabInviteInvalidBody: "This invite link is invalid, expired, or has already been used. Ask the gallery owner to send a new one.",
+  collabSetupTitle: 'Set up your passkey',
+  collabSetupTitleGallery: 'Set up your passkey to collaborate on “{gallery}”',
+  collabSetupIntro: "Passkeys let you sign in with your device's fingerprint, face, or screen lock — no password needed.",
+  collabSetupButton: 'Set up passkey',
+  collabSetupBusy: 'Setting up…',
+  collabSetupDone: "You're all set. Redirecting…",
   findNearbyHint: 'OCR can miss numbers — try nearby bibs if nothing shows up.',
 };
 
@@ -237,6 +253,14 @@ const nl: I18nDict = {
   matchesSaved: 'Opgeslagen in je favorieten',
   eventGetPhotos: 'Haal je foto’s op',
   browseGallery: 'Bekijk volledige galerij',
+  collabInviteInvalidTitle: 'Uitnodiging niet beschikbaar',
+  collabInviteInvalidBody: 'Deze uitnodigingslink is ongeldig, verlopen of al gebruikt. Vraag de eigenaar om een nieuwe link.',
+  collabSetupTitle: 'Stel je passkey in',
+  collabSetupTitleGallery: 'Stel je passkey in om samen te werken aan “{gallery}”',
+  collabSetupIntro: 'Met een passkey log je in met je vingerafdruk, gezicht of schermvergrendeling — geen wachtwoord nodig.',
+  collabSetupButton: 'Passkey instellen',
+  collabSetupBusy: 'Bezig met instellen…',
+  collabSetupDone: 'Je bent klaar. Doorverwijzen…',
   findNearbyHint: 'OCR kan nummers missen — probeer een dichtbijgelegen nummer.',
 };
 
@@ -317,6 +341,14 @@ const it: I18nDict = {
   matchesSaved: 'Salvato nei preferiti',
   eventGetPhotos: 'Ottieni le tue foto',
   browseGallery: 'Sfoglia la galleria',
+  collabInviteInvalidTitle: 'Invito non disponibile',
+  collabInviteInvalidBody: "Questo link di invito non è valido, è scaduto o è già stato usato. Chiedi al proprietario di inviarne uno nuovo.",
+  collabSetupTitle: 'Configura la tua passkey',
+  collabSetupTitleGallery: 'Configura la tua passkey per collaborare su “{gallery}”',
+  collabSetupIntro: 'Le passkey ti permettono di accedere con impronta, volto o blocco schermo del dispositivo — nessuna password necessaria.',
+  collabSetupButton: 'Configura passkey',
+  collabSetupBusy: 'Configurazione in corso…',
+  collabSetupDone: 'Tutto pronto. Reindirizzamento…',
   findNearbyHint: 'L’OCR può sbagliare — prova un numero vicino se non trovi nulla.',
 };
 

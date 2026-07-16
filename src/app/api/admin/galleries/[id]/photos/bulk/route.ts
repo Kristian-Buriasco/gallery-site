@@ -1,13 +1,11 @@
 import { eq } from 'drizzle-orm';
 import { getDb, schema } from '@/db';
-import { errorJson, json, requireAdmin } from '@/lib/api';
+import { errorJson, json, requireGalleryCapability, requireOwner } from '@/lib/api';
 import { deletePhotoById } from '@/lib/delete-photo';
 
 type Params = { params: Promise<{ id: string }> };
 
 export async function POST(req: Request, { params }: Params) {
-  const denied = await requireAdmin();
-  if (denied) return denied;
   const { id } = await params;
 
   let body: Record<string, unknown>;
@@ -22,6 +20,14 @@ export async function POST(req: Request, { params }: Params) {
     : [];
   const action = body.action as string;
   if (photoIds.length === 0) return errorJson('photoIds required', 400);
+
+  // 'delete' and 'cover' are destructive/settings actions — owner only. A
+  // collaborator may only 'move' (organize) within their granted gallery.
+  const denied =
+    action === 'delete' || action === 'cover'
+      ? await requireOwner()
+      : await requireGalleryCapability(id, 'organize');
+  if (denied) return denied;
 
   const db = getDb();
   const photos = db

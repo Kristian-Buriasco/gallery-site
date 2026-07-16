@@ -1,7 +1,7 @@
 import Link from 'next/link';
 import { redirect } from 'next/navigation';
 import { pendingCommentCount } from '@/lib/comments';
-import { isAdmin } from '@/lib/session';
+import { getPrincipal } from '@/lib/session';
 import ThemeToggle from '@/components/ThemeToggle';
 import UpdateBadge from '@/components/UpdateBadge';
 import LogoutButton from './LogoutButton';
@@ -11,9 +11,11 @@ export default async function AdminLayout({
 }: {
   children: React.ReactNode;
 }) {
-  if (!(await isAdmin())) redirect('/admin/login');
+  const principal = await getPrincipal();
+  if (!principal) redirect('/admin/login');
+  const isOwner = principal.role === 'owner';
 
-  const pending = pendingCommentCount();
+  const pending = isOwner ? pendingCommentCount() : 0;
 
   return (
     <div className="min-h-screen">
@@ -21,31 +23,35 @@ export default async function AdminLayout({
         <div className="mx-auto flex max-w-6xl items-center justify-between px-6 py-4">
           <div className="flex items-center gap-6 text-sm">
             <Link href="/admin" className="font-medium tracking-widest uppercase">
-              Admin
+              {isOwner ? 'Admin' : 'Collaborator'}
               {pending > 0 && (
                 <span className="ml-2 rounded-full bg-amber-500 px-1.5 py-0.5 text-[10px] text-white">
                   {pending}
                 </span>
               )}
             </Link>
-            <Link
-              href="/admin/audit"
-              className="text-neutral-500 transition-colors hover:text-neutral-900 dark:text-neutral-400 dark:hover:text-neutral-100"
-            >
-              Audit
-            </Link>
-            <Link
-              href="/admin/forensic"
-              className="text-neutral-500 transition-colors hover:text-neutral-900 dark:text-neutral-400 dark:hover:text-neutral-100"
-            >
-              Forensic
-            </Link>
-            <Link
-              href="/admin/settings"
-              className="text-neutral-500 transition-colors hover:text-neutral-900 dark:text-neutral-400 dark:hover:text-neutral-100"
-            >
-              Settings
-            </Link>
+            {isOwner && (
+              <>
+                <Link
+                  href="/admin/audit"
+                  className="text-neutral-500 transition-colors hover:text-neutral-900 dark:text-neutral-400 dark:hover:text-neutral-100"
+                >
+                  Audit
+                </Link>
+                <Link
+                  href="/admin/forensic"
+                  className="text-neutral-500 transition-colors hover:text-neutral-900 dark:text-neutral-400 dark:hover:text-neutral-100"
+                >
+                  Forensic
+                </Link>
+                <Link
+                  href="/admin/settings"
+                  className="text-neutral-500 transition-colors hover:text-neutral-900 dark:text-neutral-400 dark:hover:text-neutral-100"
+                >
+                  Settings
+                </Link>
+              </>
+            )}
             <Link
               href="/"
               className="text-neutral-500 transition-colors hover:text-neutral-900 dark:text-neutral-400 dark:hover:text-neutral-100"
@@ -54,7 +60,7 @@ export default async function AdminLayout({
             </Link>
           </div>
           <div className="flex items-center gap-3">
-            <UpdateBadge />
+            {isOwner && <UpdateBadge />}
             <ThemeToggle />
             <LogoutButton />
           </div>

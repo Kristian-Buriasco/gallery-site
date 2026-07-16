@@ -13,6 +13,7 @@ import {
 } from './AdminGalleryFeatures';
 import ShareTools from '@/components/ShareTools';
 import MostViewedStrip from '@/components/MostViewedStrip';
+import CollaboratorsPanel from './CollaboratorsPanel';
 
 interface VisitorInfo {
   id: string;
@@ -34,6 +35,8 @@ interface Props {
   sizeBytes: number;
   shareUrl: string;
   topViewed?: { photoId: string; count: number }[];
+  /** False for a collaborator: hides owner-only controls. Server routes are the real gate. */
+  isOwner?: boolean;
 }
 
 function formatBytes(n: number): string {
@@ -63,6 +66,7 @@ export default function GalleryAdmin({
   sizeBytes,
   shareUrl,
   topViewed = [],
+  isOwner = true,
 }: Props) {
   const router = useRouter();
   const [photos, setPhotos] = useState<Photo[]>(initialPhotos);
@@ -524,7 +528,15 @@ export default function GalleryAdmin({
         </div>
       </div>
 
-      {/* settings */}
+      {!isOwner && (
+        <p className="rounded border border-neutral-300 bg-neutral-50 px-3 py-2 text-xs text-neutral-600 dark:border-neutral-700 dark:bg-neutral-900 dark:text-neutral-300">
+          You&apos;re collaborating on this gallery. Upload and organize photos below —
+          settings, publishing, and deletion are managed by the owner.
+        </p>
+      )}
+
+      {/* settings (owner only) */}
+      {isOwner && (
       <section className="grid gap-8 md:grid-cols-2">
         <div className="space-y-5">
           <h2 className="text-xs tracking-widest text-neutral-500 uppercase dark:text-neutral-400">
@@ -659,8 +671,11 @@ export default function GalleryAdmin({
           )}
         </div>
       </section>
+      )}
 
-      <AdminExtraSettings gallery={gallery} photos={photos} patchGallery={patchGallery} />
+      {isOwner && (
+        <AdminExtraSettings gallery={gallery} photos={photos} patchGallery={patchGallery} />
+      )}
       <AdminSectionsPanel
         galleryId={gallery.id}
         photos={photos}
@@ -668,8 +683,9 @@ export default function GalleryAdmin({
         onSelectedChange={setSelected}
         onPhotosChange={setPhotos}
         onTogglePhoto={togglePhotoSelection}
+        isOwner={isOwner}
       />
-      <AdminCommentsPanel galleryId={gallery.id} />
+      {isOwner && <AdminCommentsPanel galleryId={gallery.id} />}
 
       {/* upload */}
       <section>
@@ -916,23 +932,27 @@ export default function GalleryAdmin({
                     </span>
                   )}
                   <div className="absolute inset-x-0 bottom-0 flex justify-between gap-1 bg-black/60 p-1 opacity-0 transition-opacity group-hover:opacity-100">
-                    <button
-                      type="button"
-                      onClick={() => {
-                        const alt = prompt('Alt text (max 300 chars)', p.altText ?? '');
-                        if (alt !== null) void patchAlt(p.id, alt);
-                      }}
-                      className="text-[10px] text-white hover:underline"
-                    >
-                      Alt
-                    </button>
-                    <button
-                      type="button"
-                      onClick={() => setCover(p.id)}
-                      className="text-[10px] text-white hover:underline"
-                    >
-                      Cover
-                    </button>
+                    {isOwner && (
+                      <button
+                        type="button"
+                        onClick={() => {
+                          const alt = prompt('Alt text (max 300 chars)', p.altText ?? '');
+                          if (alt !== null) void patchAlt(p.id, alt);
+                        }}
+                        className="text-[10px] text-white hover:underline"
+                      >
+                        Alt
+                      </button>
+                    )}
+                    {isOwner && (
+                      <button
+                        type="button"
+                        onClick={() => setCover(p.id)}
+                        className="text-[10px] text-white hover:underline"
+                      >
+                        Cover
+                      </button>
+                    )}
                     <span
                       className="truncate text-[9px] text-neutral-300"
                       title={p.filename}
@@ -954,8 +974,8 @@ export default function GalleryAdmin({
         )}
       </section>
 
-      {/* selections panel */}
-      {isClientGallery && (
+      {/* selections panel (owner only) */}
+      {isOwner && isClientGallery && (
         <section>
           <h2 className="mb-3 text-xs tracking-widest text-neutral-500 uppercase dark:text-neutral-400">
             Selections
@@ -1034,19 +1054,23 @@ export default function GalleryAdmin({
         </section>
       )}
 
-      {/* most viewed */}
-      {topViewed.length > 0 && <MostViewedStrip items={topViewed} photos={photos} />}
+      {/* most viewed (owner only) */}
+      {isOwner && topViewed.length > 0 && <MostViewedStrip items={topViewed} photos={photos} />}
 
-      {/* danger zone */}
-      <section className="border-t border-neutral-200 pt-6 dark:border-neutral-800">
-        <button
-          type="button"
-          onClick={deleteGallery}
-          className="border border-red-600 px-4 py-1.5 text-xs tracking-widest text-red-600 uppercase transition-colors hover:bg-red-600 hover:text-white"
-        >
-          Delete gallery
-        </button>
-      </section>
+      {/* danger zone (owner only) */}
+      {isOwner && (
+        <section className="border-t border-neutral-200 pt-6 dark:border-neutral-800">
+          <button
+            type="button"
+            onClick={deleteGallery}
+            className="border border-red-600 px-4 py-1.5 text-xs tracking-widest text-red-600 uppercase transition-colors hover:bg-red-600 hover:text-white"
+          >
+            Delete gallery
+          </button>
+        </section>
+      )}
+
+      {isOwner && <CollaboratorsPanel galleryId={gallery.id} />}
     </div>
   );
 }

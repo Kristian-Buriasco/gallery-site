@@ -1,16 +1,20 @@
 import { asc, eq } from 'drizzle-orm';
 import { getDb, schema } from '@/db';
-import { errorJson, json, requireAdmin } from '@/lib/api';
+import { errorJson, json, requireGalleryCapability } from '@/lib/api';
+import { getPrincipal } from '@/lib/session';
 import { ingestGalleryPhoto } from '@/lib/photo-upload';
 import { getPhotoTagsForGallery } from '@/lib/tags';
 
 type Params = { params: Promise<{ id: string }> };
 
-/** Lightweight photo list, used by the admin UI for status polling. */
+/** Lightweight photo list, used by the admin UI for status polling. Any grantee (upload or organize) may list. */
 export async function GET(req: Request, { params }: Params) {
-  const denied = await requireAdmin();
-  if (denied) return denied;
   const { id } = await params;
+  const deniedUpload = await requireGalleryCapability(id, 'upload');
+  if (deniedUpload) {
+    const deniedOrganize = await requireGalleryCapability(id, 'organize');
+    if (deniedOrganize) return deniedOrganize;
+  }
   const withTags = new URL(req.url).searchParams.get('tags') === '1';
 
   const rows = getDb()
@@ -27,9 +31,9 @@ export async function GET(req: Request, { params }: Params) {
 }
 
 export async function POST(req: Request, { params }: Params) {
-  const denied = await requireAdmin();
-  if (denied) return denied;
   const { id } = await params;
+  const denied = await requireGalleryCapability(id, 'upload');
+  if (denied) return denied;
 
   let form: FormData;
   try {
@@ -43,7 +47,10 @@ export async function POST(req: Request, { params }: Params) {
   const sectionIdRaw = form.get('sectionId');
   const sectionId = typeof sectionIdRaw === 'string' ? sectionIdRaw : null;
 
-  const result = await ingestGalleryPhoto(id, file, sectionId);
+  const principal = await getPrincipal();
+  const uploadedBy = principal?.role === 'collaborator' ? principal.collaboratorId : null;
+
+  const result = await ingestGalleryPhoto(id, file, sectionId, { uploadedBy });
   if (!result.ok) return errorJson(result.error, result.status);
   if ('duplicate' in result && result.duplicate) {
     return json({ duplicate: true, existingFilename: result.existingFilename });

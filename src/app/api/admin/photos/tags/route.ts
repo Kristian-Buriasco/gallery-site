@@ -1,5 +1,5 @@
 import { inArray } from 'drizzle-orm';
-import { requireAdmin, errorJson, json } from '@/lib/api';
+import { requireGalleryCapability, errorJson, json } from '@/lib/api';
 import { getDb, schema } from '@/db';
 import {
   assignTagToPhotos,
@@ -8,10 +8,27 @@ import {
   unassignTagFromPhotos,
 } from '@/lib/tags';
 
-export async function POST(req: Request) {
-  const denied = await requireAdmin();
-  if (denied) return denied;
+/** Every photo in `ids` must belong to a gallery the caller holds 'organize' on. */
+async function requireOrganizeOnPhotoGalleries(
+  ids: string[],
+): Promise<{ denied: Response | null; galleryIds: string[] }> {
+  const rows = getDb()
+    .select({ id: schema.photos.id, galleryId: schema.photos.galleryId })
+    .from(schema.photos)
+    .where(inArray(schema.photos.id, ids))
+    .all();
+  if (rows.length !== ids.length) {
+    return { denied: errorJson('Invalid photoIds', 400), galleryIds: [] };
+  }
+  const galleryIds = [...new Set(rows.map((r) => r.galleryId))];
+  for (const galleryId of galleryIds) {
+    const denied = await requireGalleryCapability(galleryId, 'organize');
+    if (denied) return { denied, galleryIds };
+  }
+  return { denied: null, galleryIds };
+}
 
+export async function POST(req: Request) {
   let body: unknown;
   try {
     body = await req.json();
@@ -40,12 +57,8 @@ export async function POST(req: Request) {
   }
 
   const ids = photoIds as string[];
-  const count = getDb()
-    .select({ id: schema.photos.id })
-    .from(schema.photos)
-    .where(inArray(schema.photos.id, ids))
-    .all().length;
-  if (count !== ids.length) return errorJson('Invalid photoIds', 400);
+  const { denied } = await requireOrganizeOnPhotoGalleries(ids);
+  if (denied) return denied;
 
   let resolvedTagId: string;
   if (typeof tagId === 'string') {
@@ -62,9 +75,6 @@ export async function POST(req: Request) {
 }
 
 export async function DELETE(req: Request) {
-  const denied = await requireAdmin();
-  if (denied) return denied;
-
   let body: unknown;
   try {
     body = await req.json();
@@ -82,6 +92,10 @@ export async function DELETE(req: Request) {
     return errorJson('photoIds required', 400);
   }
   if (typeof tagId !== 'string') return errorJson('tagId required', 400);
+  if (photoIds.length === 0) return errorJson('photoIds required', 400);
+
+  const { denied } = await requireOrganizeOnPhotoGalleries(photoIds as string[]);
+  if (denied) return denied;
 
   unassignTagFromPhotos(photoIds as string[], tagId);
   return json({ ok: true });

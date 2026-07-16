@@ -1,14 +1,14 @@
 import { asc, eq, sql } from 'drizzle-orm';
 import { nanoid } from 'nanoid';
 import { getDb, schema } from '@/db';
-import { errorJson, json, requireAdmin } from '@/lib/api';
+import { errorJson, json, requireGalleryCapability } from '@/lib/api';
 
 type Params = { params: Promise<{ id: string }> };
 
 export async function GET(_req: Request, { params }: Params) {
-  const denied = await requireAdmin();
-  if (denied) return denied;
   const { id } = await params;
+  const denied = await requireGalleryCapability(id, 'organize');
+  if (denied) return denied;
   const rows = getDb()
     .select()
     .from(schema.sections)
@@ -19,9 +19,9 @@ export async function GET(_req: Request, { params }: Params) {
 }
 
 export async function POST(req: Request, { params }: Params) {
-  const denied = await requireAdmin();
-  if (denied) return denied;
   const { id } = await params;
+  const denied = await requireGalleryCapability(id, 'organize');
+  if (denied) return denied;
   const db = getDb();
   const gallery = db.select().from(schema.galleries).where(eq(schema.galleries.id, id)).get();
   if (!gallery) return errorJson('Not found', 404);
@@ -53,9 +53,9 @@ export async function POST(req: Request, { params }: Params) {
 }
 
 export async function PATCH(req: Request, { params }: Params) {
-  const denied = await requireAdmin();
-  if (denied) return denied;
   const { id } = await params;
+  const denied = await requireGalleryCapability(id, 'organize');
+  if (denied) return denied;
   let body: Record<string, unknown>;
   try {
     body = await req.json();
@@ -86,9 +86,9 @@ export async function PATCH(req: Request, { params }: Params) {
 }
 
 export async function DELETE(req: Request, { params }: Params) {
-  const denied = await requireAdmin();
-  if (denied) return denied;
   const { id } = await params;
+  const denied = await requireGalleryCapability(id, 'organize');
+  if (denied) return denied;
   let body: Record<string, unknown>;
   try {
     body = await req.json();
@@ -115,9 +115,9 @@ export async function DELETE(req: Request, { params }: Params) {
 }
 
 export async function PUT(req: Request, { params }: Params) {
-  const denied = await requireAdmin();
-  if (denied) return denied;
   const { id } = await params;
+  const denied = await requireGalleryCapability(id, 'organize');
+  if (denied) return denied;
   let body: unknown;
   try {
     body = await req.json();

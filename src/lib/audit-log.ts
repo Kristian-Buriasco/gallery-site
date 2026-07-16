@@ -10,6 +10,10 @@ export type AuditTarget = {
   targetType?: string | null;
   targetId?: string | null;
   summary: string;
+  /** Who performed the action. Defaults to 'owner' for existing callers. */
+  actorType?: 'owner' | 'collaborator';
+  /** collaborators.id when actorType='collaborator'. */
+  actorId?: string | null;
 };
 
 /** Record a privileged admin action (no PII beyond the summary line). */
@@ -23,6 +27,8 @@ export function logAdmin(action: string, target: AuditTarget): void {
       targetType: target.targetType ?? null,
       targetId: target.targetId ?? null,
       summary: target.summary.slice(0, SUMMARY_MAX),
+      actorType: target.actorType ?? 'owner',
+      actorId: target.actorType === 'collaborator' ? (target.actorId ?? null) : null,
     })
     .run();
   if (Math.random() < 0.05) pruneAuditLog();

@@ -1,15 +1,15 @@
 import { and, asc, eq, sql } from 'drizzle-orm';
 import { getDb, schema } from '@/db';
-import { errorJson, json, requireAdmin } from '@/lib/api';
+import { errorJson, json, requireGalleryCapability } from '@/lib/api';
 
 type Params = { params: Promise<{ id: string }> };
 
 type SortMode = 'filename' | 'capture' | 'upload';
 
 export async function POST(req: Request, { params }: Params) {
-  const denied = await requireAdmin();
-  if (denied) return denied;
   const { id } = await params;
+  const denied = await requireGalleryCapability(id, 'organize');
+  if (denied) return denied;
 
   let body: Record<string, unknown>;
   try {
@@ -57,9 +57,12 @@ export async function POST(req: Request, { params }: Params) {
 }
 
 export async function GET(_req: Request, { params }: Params) {
-  const denied = await requireAdmin();
-  if (denied) return denied;
   const { id } = await params;
+  const deniedUpload = await requireGalleryCapability(id, 'upload');
+  if (deniedUpload) {
+    const deniedOrganize = await requireGalleryCapability(id, 'organize');
+    if (deniedOrganize) return deniedOrganize;
+  }
   const rows = getDb()
     .select()
     .from(schema.photos)

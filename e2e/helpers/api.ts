@@ -135,3 +135,57 @@ export async function createUploadToken(
 export function tempImagePath(name: string): string {
   return path.join(process.cwd(), 'e2e', '.tmp', name);
 }
+
+export async function inviteCollaborator(
+  request: APIRequestContext,
+  baseUrl: string,
+  galleryId: string,
+  email: string,
+): Promise<{ collaboratorId: string; onboardingUrl: string; expiresAt: number }> {
+  const res = await request.post(`${baseUrl}/api/admin/galleries/${galleryId}/collaborators`, {
+    data: { email },
+  });
+  if (!res.ok()) {
+    throw new Error(`Invite collaborator failed: ${res.status()} ${await res.text()}`);
+  }
+  return res.json();
+}
+
+export async function listGalleryCollaborators(
+  request: APIRequestContext,
+  baseUrl: string,
+  galleryId: string,
+): Promise<{ grantId: string; collaboratorId: string; email: string }[]> {
+  const res = await request.get(`${baseUrl}/api/admin/galleries/${galleryId}/collaborators`);
+  if (!res.ok()) {
+    throw new Error(`List collaborators failed: ${res.status()} ${await res.text()}`);
+  }
+  const data = await res.json();
+  return data.collaborators ?? [];
+}
+
+export async function revokeGrant(
+  request: APIRequestContext,
+  baseUrl: string,
+  grantId: string,
+): Promise<void> {
+  const res = await request.delete(`${baseUrl}/api/admin/collaborators/grants/${grantId}`);
+  if (!res.ok()) {
+    throw new Error(`Revoke grant failed: ${res.status()} ${await res.text()}`);
+  }
+}
+
+export async function setCollaboratorDisabled(
+  request: APIRequestContext,
+  baseUrl: string,
+  collaboratorId: string,
+  disabled: boolean,
+): Promise<void> {
+  const res = await request.post(
+    `${baseUrl}/api/admin/collaborators/${collaboratorId}/disable`,
+    { data: { disabled } },
+  );
+  if (!res.ok()) {
+    throw new Error(`Set collaborator disabled failed: ${res.status()} ${await res.text()}`);
+  }
+}
