@@ -3,6 +3,7 @@
 import { useMemo, useState } from 'react';
 import Lightbox, { HeartIcon, type LightboxPhoto } from './Lightbox';
 import PhotoComments from './PhotoComments';
+import BlurImage from './BlurImage';
 
 export type SectionGroup = {
   id: string | null;
@@ -19,6 +20,7 @@ export default function SectionedGalleryGrid({
   selectedIds,
   photoTagIds,
   tagOptions,
+  labels,
 }: {
   sections: SectionGroup[];
   renderTileOverlay: (photo: LightboxPhoto) => React.ReactNode;
@@ -28,6 +30,7 @@ export default function SectionedGalleryGrid({
   selectedIds?: Set<string>;
   photoTagIds?: Record<string, string[]>;
   tagOptions?: { id: string; name: string }[];
+  labels?: { allSections: string; noPhotos: string };
 }) {
   const [activeSection, setActiveSection] = useState<string | null>(null);
   const [activeTag, setActiveTag] = useState<string | null>(null);
@@ -62,7 +65,7 @@ export default function SectionedGalleryGrid({
                     : 'border-line dark:border-line-dark'
                 }`}
               >
-                All
+                {labels?.allSections ?? 'All'}
               </button>
               {sections
                 .filter((s) => s.id !== null)
@@ -129,13 +132,14 @@ export default function SectionedGalleryGrid({
                       onClick={() => onOpenLightbox(startOffset + i)}
                       className="block w-full cursor-zoom-in"
                     >
-                      {/* eslint-disable-next-line @next/next/no-img-element */}
-                      <img
+                      <BlurImage
                         src={`/img/${p.id}/thumb`}
-                        alt={p.filename}
-                        loading="lazy"
+                        srcSet={`/img/${p.id}/thumb 1x, /img/${p.id}/web 2x`}
+                        sizes="(max-width: 768px) 50vw, 25vw"
+                        alt={p.alt ?? p.filename}
                         width={p.width}
                         height={p.height}
+                        placeholder={p.placeholder}
                         className={`w-full ${isSelected ? 'brightness-90' : ''}`}
                       />
                     </button>
@@ -159,11 +163,11 @@ export default function SectionedGalleryGrid({
       })}
       {flat.length === 0 && (
         <p className="py-24 text-center text-sm text-muted dark:text-muted-dark">
-          No photos yet.
+          {labels?.noPhotos ?? 'No photos yet.'}
         </p>
       )}
     </div>
   );
 }
 
-export { HeartIcon, Lightbox, PhotoComments };
+export { HeartIcon, Lightbox, PhotoComments, type LightboxPhoto };

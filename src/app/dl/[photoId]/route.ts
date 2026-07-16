@@ -3,6 +3,7 @@ import { getDb, schema } from '@/db';
 import { logDownloadEvent, isGalleryExpired } from '@/lib/downloads';
 import { originalPath } from '@/lib/paths';
 import { hasGalleryAccess, isAdmin } from '@/lib/session';
+import { galleryRequiresAccess } from '@/lib/pin';
 import { contentTypeForFilename, streamFileResponse } from '@/lib/stream';
 
 type Params = { params: Promise<{ photoId: string }> };
@@ -31,7 +32,7 @@ export async function GET(req: Request, { params }: Params) {
     }
     if (
       gallery.type === 'client' &&
-      gallery.passwordHash &&
+      galleryRequiresAccess(gallery) &&
       !(await hasGalleryAccess(gallery.id))
     ) {
       return new Response('Forbidden', { status: 403 });

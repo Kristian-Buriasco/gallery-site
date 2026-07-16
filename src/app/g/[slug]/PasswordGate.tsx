@@ -3,13 +3,17 @@
 import { useState } from 'react';
 import { useRouter } from 'next/navigation';
 import ThemeToggle from '@/components/ThemeToggle';
+import type { Lang } from '@/lib/i18n';
+import { t } from '@/lib/i18n';
 
 export default function PasswordGate({
   slug,
   title,
+  lang,
 }: {
   slug: string;
   title: string;
+  lang: Lang;
 }) {
   const router = useRouter();
   const [password, setPassword] = useState('');
@@ -29,9 +33,9 @@ export default function PasswordGate({
     if (res.ok) {
       router.refresh();
     } else if (res.status === 429) {
-      setError('Too many attempts. Please try again later.');
+      setError(t(lang, 'tooManyAttempts'));
     } else {
-      setError('Incorrect password.');
+      setError(t(lang, 'incorrectPassword'));
     }
   }
 
@@ -48,7 +52,7 @@ export default function PasswordGate({
           type="password"
           value={password}
           onChange={(e) => setPassword(e.target.value)}
-          placeholder="Password"
+          placeholder={t(lang, 'password')}
           autoFocus
           className="w-full border-b border-neutral-300 bg-transparent py-2 text-center text-sm outline-none focus:border-neutral-900 dark:border-neutral-700 dark:focus:border-neutral-100"
         />
@@ -62,7 +66,7 @@ export default function PasswordGate({
           disabled={busy || !password}
           className="mt-8 w-full border border-neutral-900 py-2 text-xs tracking-widest uppercase transition-colors hover:bg-neutral-900 hover:text-white disabled:opacity-40 dark:border-neutral-100 dark:hover:bg-neutral-100 dark:hover:text-black"
         >
-          {busy ? 'Checking…' : 'Enter'}
+          {busy ? t(lang, 'checking') : t(lang, 'enter')}
         </button>
       </form>
     </div>

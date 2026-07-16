@@ -16,6 +16,7 @@ const BOOL_KEYS = [
   'limitSelections',
   'trackDownloads',
   'socialPreview',
+  'pinEnabled',
 ] as const;
 
 export function parseGalleryUpdates(body: Record<string, unknown>): GalleryInsert {
@@ -95,6 +96,12 @@ export function parseGalleryUpdates(body: Record<string, unknown>): GalleryInser
       typeof body.previewPhotoId === 'string' ? body.previewPhotoId : null;
   }
   if (typeof body.sortOrder === 'number') updates.sortOrder = body.sortOrder;
+  if (typeof body.coverFocusX === 'number') {
+    updates.coverFocusX = Math.min(100, Math.max(0, Math.round(body.coverFocusX)));
+  }
+  if (typeof body.coverFocusY === 'number') {
+    updates.coverFocusY = Math.min(100, Math.max(0, Math.round(body.coverFocusY)));
+  }
   return updates;
 }
 

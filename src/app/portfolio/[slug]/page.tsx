@@ -6,9 +6,11 @@ import SiteHeader from '@/components/SiteHeader';
 import SiteFooter from '@/components/SiteFooter';
 import AdminEditLink from '@/components/AdminEditLink';
 import PortfolioGrid from '@/components/PortfolioGrid';
+import JsonLd from '@/components/JsonLd';
 import { BASE_URL } from '@/lib/env';
 import { buildSectionPayloads } from '@/lib/gallery-page-data';
 import { previewPhotoId, getReadyPhotos } from '@/lib/public-data';
+import { sitePersonName } from '@/lib/feed-data';
 import { isAdmin } from '@/lib/session';
 import { recordGalleryView } from '@/lib/views';
 
@@ -72,9 +74,22 @@ export default async function PortfolioGalleryPage({
     .orderBy(asc(schema.sections.sortOrder))
     .all();
   const sectionGroups = buildSectionPayloads(gallery, photos, sectionsDb);
+  const cover = previewPhotoId(gallery);
 
   return (
     <div>
+      <JsonLd
+        data={{
+          '@context': 'https://schema.org',
+          '@type': 'ImageGallery',
+          name: gallery.title,
+          author: { '@type': 'Person', name: sitePersonName() },
+          ...(cover
+            ? { image: `${BASE_URL}/img/${cover}/web` }
+            : {}),
+          url: `${BASE_URL}/portfolio/${gallery.slug}`,
+        }}
+      />
       <SiteHeader />
       <AdminEditLink href={`/admin/galleries/${gallery.id}`} label="Edit gallery" />
       <main className="mx-auto max-w-6xl px-6 pb-24">

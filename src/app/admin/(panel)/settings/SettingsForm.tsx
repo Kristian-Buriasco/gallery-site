@@ -14,6 +14,7 @@ export default function SettingsForm({
   initialContactInstagram,
   initialContactWhatsapp,
   initialFooterContent,
+  initialDefaultLanguage,
   hasWatermark,
 }: {
   initialAbout: string;
@@ -26,6 +27,7 @@ export default function SettingsForm({
   initialContactInstagram: string;
   initialContactWhatsapp: string;
   initialFooterContent: string;
+  initialDefaultLanguage: string;
   hasWatermark: boolean;
 }) {
   const router = useRouter();
@@ -41,6 +43,7 @@ export default function SettingsForm({
   const [contactInstagram, setContactInstagram] = useState(initialContactInstagram);
   const [contactWhatsapp, setContactWhatsapp] = useState(initialContactWhatsapp);
   const [footer, setFooter] = useState(initialFooterContent);
+  const [defaultLanguage, setDefaultLanguage] = useState(initialDefaultLanguage);
   const [saving, setSaving] = useState(false);
   const [saved, setSaved] = useState(false);
   const [wmBusy, setWmBusy] = useState(false);
@@ -63,6 +66,7 @@ export default function SettingsForm({
         contactInstagram,
         contactWhatsapp,
         footerContent: footer,
+        defaultLanguage,
       }),
     });
     setSaving(false);
@@ -172,6 +176,20 @@ export default function SettingsForm({
             maxLength={200}
             className="w-full border-b border-neutral-300 bg-transparent py-2 text-sm outline-none focus:border-neutral-900 dark:border-neutral-700"
           />
+        </label>
+        <label className="block">
+          <span className="mb-2 block text-xs text-neutral-500 dark:text-neutral-400">
+            Default client gallery language
+          </span>
+          <select
+            value={defaultLanguage}
+            onChange={(e) => setDefaultLanguage(e.target.value)}
+            className="border-b border-neutral-300 bg-transparent py-2 text-sm outline-none dark:border-neutral-700"
+          >
+            <option value="en">English</option>
+            <option value="nl">Nederlands</option>
+            <option value="it">Italiano</option>
+          </select>
         </label>
         <label className="block">
           <span className="mb-2 block text-xs text-neutral-500 dark:text-neutral-400">

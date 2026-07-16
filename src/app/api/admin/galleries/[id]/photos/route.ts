@@ -1,6 +1,7 @@
 import fs from 'node:fs';
 import path from 'node:path';
-import { asc, eq, sql } from 'drizzle-orm';
+import crypto from 'node:crypto';
+import { asc, eq, and, sql } from 'drizzle-orm';
 import { nanoid } from 'nanoid';
 import sharp from 'sharp';
 import { getDb, schema } from '@/db';
@@ -66,6 +67,21 @@ export async function POST(req: Request, { params }: Params) {
   const sanitized = sanitizeFilename(file.name);
   if (!sanitized) return errorJson('Invalid filename', 400);
 
+  const contentHash = crypto.createHash('sha256').update(buf).digest('hex');
+  const duplicate = db
+    .select({ filename: schema.photos.filename })
+    .from(schema.photos)
+    .where(
+      and(
+        eq(schema.photos.galleryId, id),
+        eq(schema.photos.contentHash, contentHash),
+      ),
+    )
+    .get();
+  if (duplicate) {
+    return json({ duplicate: true, existingFilename: duplicate.filename });
+  }
+
   const taken = new Set(
     db
       .select({ filename: schema.photos.filename })
@@ -126,6 +142,7 @@ export async function POST(req: Request, { params }: Params) {
     status: 'processing' as const,
     exif: exifJson,
     capturedAt,
+    contentHash,
   };
   db.insert(schema.photos).values(photo).run();
   enqueueDerivatives(photo.id);

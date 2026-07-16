@@ -1,5 +1,6 @@
 import type { Gallery, Photo } from '@/db/schema';
 import { formatExifLine, parseStoredExif } from './exif';
+import { photoAltText } from './photo-media';
 import type { LightboxPhoto } from '@/components/Lightbox';
 
 export function mapPhotosForLightbox(gallery: Gallery, photos: Photo[]): LightboxPhoto[] {
@@ -8,6 +9,8 @@ export function mapPhotosForLightbox(gallery: Gallery, photos: Photo[]): Lightbo
     filename: p.filename,
     width: p.width,
     height: p.height,
+    placeholder: p.placeholder,
+    alt: photoAltText(p, gallery.title),
     exifLine:
       gallery.showExif && p.exif
         ? formatExifLine(parseStoredExif(p.exif) ?? {})

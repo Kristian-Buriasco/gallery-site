@@ -1,4 +1,4 @@
-import { lt } from 'drizzle-orm';
+import { lt, eq, sql, and, isNotNull } from 'drizzle-orm';
 import { headers } from 'next/headers';
 import { getDb, schema } from '@/db';
 
@@ -10,7 +10,6 @@ const globalForViews = globalThis as unknown as {
 };
 const debounceStore = (globalForViews.__viewDebounce ??= new Map());
 
-/** Client IP from trusted reverse-proxy headers (last X-Forwarded-For entry). */
 async function clientIp(): Promise<string> {
   const h = await headers();
   const xff = h.get('x-forwarded-for');
@@ -24,7 +23,6 @@ async function clientIp(): Promise<string> {
   return h.get('x-real-ip') ?? 'unknown';
 }
 
-/** Drop view_events older than 90 days (called opportunistically, not every request). */
 export function pruneOldViewEvents(): void {
   getDb()
     .delete(schema.viewEvents)
@@ -32,8 +30,7 @@ export function pruneOldViewEvents(): void {
     .run();
 }
 
-function shouldRecord(galleryId: string, sessionKey: string): boolean {
-  const key = `${galleryId}:${sessionKey}`;
+function shouldRecord(key: string): boolean {
   const now = Date.now();
   const last = debounceStore.get(key);
   if (last !== undefined && now - last < DEBOUNCE_MS) return false;
@@ -41,11 +38,6 @@ function shouldRecord(galleryId: string, sessionKey: string): boolean {
   return true;
 }
 
-/**
- * Record a gallery page view (debounced to one row per gallery per
- * visitor-or-anonymous-session every 30 minutes). Call from server
- * components when a published gallery page is rendered.
- */
 export async function recordGalleryView(
   galleryId: string,
   visitorId: string | null,
@@ -54,7 +46,7 @@ export async function recordGalleryView(
   const sessionKey =
     visitorId ??
     (sessionToken ? `tok:${sessionToken}` : `anon:${await clientIp()}`);
-  if (!shouldRecord(galleryId, sessionKey)) return;
+  if (!shouldRecord(`${galleryId}:${sessionKey}:gallery`)) return;
 
   if (Math.random() < 0.01) pruneOldViewEvents();
 
@@ -66,4 +58,51 @@ export async function recordGalleryView(
       kind: 'gallery_view',
     })
     .run();
+}
+
+export async function recordPhotoView(
+  galleryId: string,
+  photoId: string,
+  visitorId: string | null,
+  sessionToken?: string | null,
+): Promise<void> {
+  const sessionKey =
+    visitorId ??
+    (sessionToken ? `tok:${sessionToken}` : `anon:${await clientIp()}`);
+  if (!shouldRecord(`${galleryId}:${photoId}:${sessionKey}`)) return;
+
+  getDb()
+    .insert(schema.viewEvents)
+    .values({
+      galleryId,
+      photoId,
+      visitorId,
+      kind: 'photo_view',
+    })
+    .run();
+}
+
+export function topViewedPhotos(
+  galleryId: string,
+  limit = 8,
+): { photoId: string; count: number }[] {
+  return getDb()
+    .select({
+      photoId: schema.viewEvents.photoId,
+      count: sql<number>`count(*)`,
+    })
+    .from(schema.viewEvents)
+    .where(
+      and(
+        eq(schema.viewEvents.galleryId, galleryId),
+        eq(schema.viewEvents.kind, 'photo_view'),
+        isNotNull(schema.viewEvents.photoId),
+      ),
+    )
+    .groupBy(schema.viewEvents.photoId)
+    .orderBy(sql`count(*) desc`)
+    .limit(limit)
+    .all()
+    .filter((r) => r.photoId)
+    .map((r) => ({ photoId: r.photoId!, count: r.count }));
 }

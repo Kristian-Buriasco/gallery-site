@@ -85,6 +85,13 @@
       "when": 1784001600000,
       "tag": "0011_preview_photo",
       "breakpoints": true
+    },
+    {
+      "idx": 12,
+      "version": "6",
+      "when": 1784005200000,
+      "tag": "0012_fixes5",
+      "breakpoints": true
     }
   ]
 }

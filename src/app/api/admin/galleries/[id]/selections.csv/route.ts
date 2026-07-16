@@ -29,6 +29,7 @@ export async function GET(_req: Request, { params }: Params) {
       filename: schema.photos.filename,
       name: schema.visitors.name,
       email: schema.visitors.email,
+      selectedAt: schema.selections.createdAt,
     })
     .from(schema.selections)
     .innerJoin(schema.photos, eq(schema.selections.photoId, schema.photos.id))
@@ -37,10 +38,15 @@ export async function GET(_req: Request, { params }: Params) {
     .orderBy(asc(schema.photos.filename))
     .all();
 
-  const lines = ['filename,visitor name,visitor email'];
+  const lines = ['filename,visitor_name,visitor_email,selected_at'];
   for (const r of rows) {
     lines.push(
-      [csvEscape(r.filename), csvEscape(r.name ?? ''), csvEscape(r.email ?? '')].join(','),
+      [
+        csvEscape(r.filename),
+        csvEscape(r.name ?? ''),
+        csvEscape(r.email ?? ''),
+        csvEscape(new Date(r.selectedAt).toISOString()),
+      ].join(','),
     );
   }
 

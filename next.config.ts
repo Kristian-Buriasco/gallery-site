@@ -3,6 +3,7 @@ import path from 'node:path';
 
 const nextConfig: NextConfig = {
   output: 'standalone',
+  poweredByHeader: false,
   outputFileTracingRoot: __dirname,
   serverExternalPackages: ['better-sqlite3', 'sharp'],
   // Include drizzle migration SQL files in the standalone bundle so

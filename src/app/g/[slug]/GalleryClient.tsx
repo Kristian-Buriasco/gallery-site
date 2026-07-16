@@ -5,10 +5,13 @@ import SectionedGalleryGrid, {
   HeartIcon,
   Lightbox,
   PhotoComments,
+  type LightboxPhoto,
   type SectionGroup,
 } from '@/components/SectionedGalleryGrid';
+import type { Lang } from '@/lib/i18n';
+import { formatMsg, t } from '@/lib/i18n';
+import LanguageSwitcher, { getStoredLang } from '@/components/LanguageSwitcher';
 import ThemeToggle from '@/components/ThemeToggle';
-import type { LightboxPhoto } from '@/components/Lightbox';
 
 interface Props {
   slug: string;
@@ -29,6 +32,7 @@ interface Props {
   selectionLimit: number | null;
   photoTagIds: Record<string, string[]>;
   tagOptions: { id: string; name: string }[];
+  defaultLang: Lang;
 }
 
 export default function GalleryClient({
@@ -49,7 +53,9 @@ export default function GalleryClient({
   selectionLimit,
   photoTagIds,
   tagOptions,
+  defaultLang,
 }: Props) {
+  const [lang, setLang] = useState<Lang>(() => getStoredLang() ?? defaultLang);
   const photos = useMemo(() => sections.flatMap((s) => s.photos), [sections]);
   const [visitorReady, setVisitorReady] = useState(hasVisitor);
   const [showInfoModal, setShowInfoModal] = useState(
@@ -61,6 +67,8 @@ export default function GalleryClient({
   const [onlyMine, setOnlyMine] = useState(false);
   const [lightbox, setLightbox] = useState<number | null>(null);
   const [commentCounts, setCommentCounts] = useState<Record<string, number>>({});
+  const [downloadConfirm, setDownloadConfirm] = useState<'all' | 'favorites' | null>(null);
+  const [downloadInfo, setDownloadInfo] = useState<{ count: number; sizeLabel: string } | null>(null);
 
   useEffect(() => {
     if (!commentsEnabled) return;
@@ -142,6 +150,23 @@ export default function GalleryClient({
       ? `https://www.openstreetmap.org/?mlat=${encodeURIComponent(locationLat)}&mlon=${encodeURIComponent(locationLng)}#map=14/${encodeURIComponent(locationLat)}/${encodeURIComponent(locationLng)}`
       : null;
 
+  async function promptDownload(kind: 'all' | 'favorites') {
+    const res = await fetch(`/api/g/${slug}/download-info`);
+    if (res.ok) {
+      const data = await res.json();
+      setDownloadInfo({ count: data.count, sizeLabel: data.sizeLabel });
+    }
+    setDownloadConfirm(kind);
+  }
+
+  function recordPhotoView(photoId: string) {
+    void fetch(`/api/g/${slug}/photo-view`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ photoId }),
+    });
+  }
+
   return (
     <div className="min-h-screen">
       <header className="sticky top-0 z-20 border-b border-line/70 bg-paper/90 backdrop-blur dark:border-line-dark/70 dark:bg-paper-dark/90">
@@ -158,10 +183,10 @@ export default function GalleryClient({
                     year: 'numeric',
                   }) + ' · '
                 : ''}
-              {photos.length} photos
-              {selected.size > 0 ? ` · ${selected.size} selected` : ''}
+              {photos.length} {t(lang, 'photos')}
+              {selected.size > 0 ? ` · ${selected.size} ${t(lang, 'selected')}` : ''}
               {selectionLimit !== null
-                ? ` · ${selected.size} of ${selectionLimit} selected`
+                ? ` · ${selected.size} ${t(lang, 'selectedOf')} ${selectionLimit} ${t(lang, 'selected')}`
                 : ''}
             </p>
             {showLocation && locationName && (
@@ -176,7 +201,7 @@ export default function GalleryClient({
                       rel="noopener noreferrer"
                       className="underline underline-offset-2"
                     >
-                      View on map
+                      {t(lang, 'viewOnMap')}
                     </a>
                   </>
                 )}
@@ -194,24 +219,27 @@ export default function GalleryClient({
               }`}
             >
               <HeartIcon filled={onlyMine} className="h-3.5 w-3.5" />
-              My selections
+              {t(lang, 'mySelections')}
             </button>
             {downloadEnabled && (
-              <a
-                href={`/dl/gallery/${slug}.zip`}
+              <button
+                type="button"
+                onClick={() => promptDownload('all')}
                 className="rounded-full border border-neutral-300 px-3 py-1.5 text-neutral-600 transition-colors hover:border-neutral-500 dark:border-neutral-700 dark:text-neutral-300"
               >
-                Download all
-              </a>
+                {t(lang, 'downloadAll')}
+              </button>
             )}
             {downloadEnabled && favoritesDownloadEnabled && selected.size > 0 && (
-              <a
-                href={`/dl/favorites/${slug}.zip`}
+              <button
+                type="button"
+                onClick={() => promptDownload('favorites')}
                 className="rounded-full border border-neutral-300 px-3 py-1.5 text-neutral-600 transition-colors hover:border-neutral-500 dark:border-neutral-700 dark:text-neutral-300"
               >
-                Download my selections
-              </a>
+                {t(lang, 'downloadSelections')}
+              </button>
             )}
+            <LanguageSwitcher lang={lang} onChange={setLang} />
             <ThemeToggle />
           </div>
         </div>
@@ -227,13 +255,17 @@ export default function GalleryClient({
             photoTagIds={photoTagIds}
             tagOptions={tagOptions}
             onOpenLightbox={setLightbox}
+            labels={{
+              allSections: t(lang, 'allSections'),
+              noPhotos: t(lang, 'noPhotos'),
+            }}
             renderTileOverlay={(p: LightboxPhoto) => (
               <button
                 type="button"
                 onClick={() => toggleSelect(p.id)}
                 disabled={!selected.has(p.id) && atLimit}
                 aria-label={
-                  selected.has(p.id) ? 'Remove from selection' : 'Add to selection'
+                  selected.has(p.id) ? t(lang, 'removeFromSelection') : t(lang, 'addToSelection')
                 }
                 className={`absolute right-2 bottom-2 z-10 flex min-h-11 min-w-11 items-center justify-center rounded-full transition-all ${
                   selected.has(p.id)
@@ -261,13 +293,52 @@ export default function GalleryClient({
             downloadEnabled={downloadEnabled}
             commentsEnabled={commentsEnabled}
             commentsApiBase={`/api/g/${slug}/comments`}
+            onPhotoOpen={recordPhotoView}
+            slideshowLabel={{
+              play: t(lang, 'slideshowPlay'),
+              pause: t(lang, 'slideshowPause'),
+            }}
           />
         </>
+      )}
+
+      {downloadConfirm && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 px-6">
+          <div className="w-full max-w-sm bg-paper p-6 dark:bg-paper-dark">
+            <p className="text-sm">
+              {formatMsg(lang, 'downloadConfirmTitle', {
+                count: downloadInfo?.count ?? photos.length,
+                size: downloadInfo?.sizeLabel ?? '?',
+              })}
+            </p>
+            <div className="mt-6 flex gap-3">
+              <button
+                type="button"
+                className="flex-1 border py-2 text-xs uppercase"
+                onClick={() => setDownloadConfirm(null)}
+              >
+                {t(lang, 'downloadConfirmCancel')}
+              </button>
+              <a
+                href={
+                  downloadConfirm === 'all'
+                    ? `/dl/gallery/${slug}.zip`
+                    : `/dl/favorites/${slug}.zip`
+                }
+                className="flex-1 border border-neutral-900 py-2 text-center text-xs uppercase dark:border-neutral-100"
+                onClick={() => setDownloadConfirm(null)}
+              >
+                {t(lang, 'downloadConfirmProceed')}
+              </a>
+            </div>
+          </div>
+        </div>
       )}
 
       {showInfoModal && (
         <InfoGateModal
           slug={slug}
+          lang={lang}
           required={clientInfoMode === 'required'}
           onDone={() => {
             setShowInfoModal(false);
@@ -281,10 +352,12 @@ export default function GalleryClient({
 
 function InfoGateModal({
   slug,
+  lang,
   required,
   onDone,
 }: {
   slug: string;
+  lang: Lang;
   required: boolean;
   onDone: () => void;
 }) {
@@ -305,16 +378,16 @@ function InfoGateModal({
     if (res.ok) onDone();
     else {
       const data = await res.json().catch(() => null);
-      setError(data?.error ?? 'Something went wrong.');
+      setError(data?.error ?? t(lang, 'somethingWrong'));
     }
   }
 
   async function submit(e: React.FormEvent) {
     e.preventDefault();
     if (required) {
-      if (!name.trim()) return setError('Please enter your name.');
+      if (!name.trim()) return setError(t(lang, 'nameRequired'));
       if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email.trim())) {
-        return setError('Please enter a valid email.');
+        return setError(t(lang, 'emailRequired'));
       }
     }
     await createVisitor({
@@ -326,29 +399,29 @@ function InfoGateModal({
   return (
     <div className="fixed inset-0 z-40 flex items-center justify-center bg-black/60 px-6">
       <div className="w-full max-w-sm bg-[#fafafa] p-8 dark:bg-[#111]">
-        <h2 className="text-sm font-medium tracking-widest uppercase">Welcome</h2>
+        <h2 className="text-sm font-medium tracking-widest uppercase">{t(lang, 'welcome')}</h2>
         <form onSubmit={submit} className="mt-6 space-y-4">
           <input
             type="text"
             value={name}
             onChange={(e) => setName(e.target.value)}
-            placeholder={required ? 'Name (required)' : 'Name'}
+            placeholder={required ? `${t(lang, 'name')} *` : t(lang, 'name')}
             className="w-full border-b border-neutral-300 bg-transparent py-2 text-sm outline-none dark:border-neutral-700"
           />
           <input
             type="email"
             value={email}
             onChange={(e) => setEmail(e.target.value)}
-            placeholder={required ? 'Email (required)' : 'Email'}
+            placeholder={required ? `${t(lang, 'email')} *` : t(lang, 'email')}
             className="w-full border-b border-neutral-300 bg-transparent py-2 text-sm outline-none dark:border-neutral-700"
           />
           {error && <p className="text-xs text-red-600">{error}</p>}
           <button type="submit" disabled={busy} className="w-full border py-2 text-xs uppercase">
-            Continue
+            {t(lang, 'continue')}
           </button>
           {!required && (
             <button type="button" onClick={() => createVisitor({})} className="w-full text-xs underline">
-              Skip
+              {t(lang, 'skip')}
             </button>
           )}
         </form>

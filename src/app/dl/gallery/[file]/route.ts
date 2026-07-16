@@ -6,6 +6,7 @@ import { getDb, schema } from '@/db';
 import { isGalleryExpired, logDownloadEvent } from '@/lib/downloads';
 import { zipEntriesForGallery } from '@/lib/sections';
 import { hasGalleryAccess, isAdmin } from '@/lib/session';
+import { galleryRequiresAccess } from '@/lib/pin';
 
 type Params = { params: Promise<{ file: string }> };
 
@@ -37,7 +38,7 @@ export async function GET(_req: Request, { params }: Params) {
     }
     if (
       gallery.type === 'client' &&
-      gallery.passwordHash &&
+      galleryRequiresAccess(gallery) &&
       !(await hasGalleryAccess(gallery.id))
     ) {
       return new Response('Forbidden', { status: 403 });

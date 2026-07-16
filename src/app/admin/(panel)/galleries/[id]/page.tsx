@@ -5,6 +5,7 @@ import { dirSizeBytes } from '@/lib/disk';
 import { galleryDir } from '@/lib/paths';
 import { BASE_URL } from '@/lib/env';
 import { isAdmin } from '@/lib/session';
+import { topViewedPhotos } from '@/lib/views';
 import GalleryAdmin from './GalleryAdmin';
 
 export const dynamic = 'force-dynamic';
@@ -94,6 +95,8 @@ export default async function AdminGalleryPage({
       )
       .get()?.c ?? 0;
 
+  const topViewed = topViewedPhotos(id);
+
   return (
     <GalleryAdmin
       gallery={gallery}
@@ -112,6 +115,7 @@ export default async function AdminGalleryPage({
           ? `${BASE_URL}/g/${gallery.slug}`
           : `${BASE_URL}/portfolio/${gallery.slug}`
       }
+      topViewed={topViewed}
     />
   );
 }

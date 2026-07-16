@@ -1,6 +1,7 @@
 import { eq } from 'drizzle-orm';
 import { getDb, schema } from '@/db';
 import { hasGalleryAccess, isAdmin } from '@/lib/session';
+import { galleryRequiresAccess } from '@/lib/pin';
 import { thumbPath, webPath } from '@/lib/paths';
 import { streamFileResponse } from '@/lib/stream';
 
@@ -33,7 +34,7 @@ export async function GET(req: Request, { params }: Params) {
     if (!gallery.published) return new Response('Not found', { status: 404 });
     if (
       gallery.type === 'client' &&
-      gallery.passwordHash &&
+      galleryRequiresAccess(gallery) &&
       !(await hasGalleryAccess(gallery.id))
     ) {
       return new Response('Forbidden', { status: 403 });

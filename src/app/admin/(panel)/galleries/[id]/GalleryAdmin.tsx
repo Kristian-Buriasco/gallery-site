@@ -11,6 +11,8 @@ import {
   AdminExtraSettings,
   AdminSectionsPanel,
 } from './AdminGalleryFeatures';
+import ShareTools from '@/components/ShareTools';
+import MostViewedStrip from '@/components/MostViewedStrip';
 
 interface VisitorInfo {
   id: string;
@@ -31,6 +33,7 @@ interface Props {
   viewStats: { total: number; last7: number; lastAt: number | null };
   sizeBytes: number;
   shareUrl: string;
+  topViewed?: { photoId: string; count: number }[];
 }
 
 function formatBytes(n: number): string {
@@ -59,6 +62,7 @@ export default function GalleryAdmin({
   viewStats,
   sizeBytes,
   shareUrl,
+  topViewed = [],
 }: Props) {
   const router = useRouter();
   const [photos, setPhotos] = useState<Photo[]>(initialPhotos);
@@ -94,7 +98,22 @@ export default function GalleryAdmin({
     selectAnchor.current = photoId;
   }
 
-  // ---- status polling while anything is processing ----
+  const gridRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    function onKey(e: KeyboardEvent) {
+      if (e.key === 'Escape') setSelected(new Set());
+      if ((e.metaKey || e.ctrlKey) && e.key === 'a') {
+        if (gridRef.current?.contains(document.activeElement) || document.activeElement === document.body) {
+          e.preventDefault();
+          setSelected(new Set(photos.map((p) => p.id)));
+        }
+      }
+    }
+    window.addEventListener('keydown', onKey);
+    return () => window.removeEventListener('keydown', onKey);
+  }, [photos]);
+
   const anyProcessing = photos.some((p) => p.status === 'processing');
   useEffect(() => {
     if (!anyProcessing) return;
@@ -139,8 +158,35 @@ export default function GalleryAdmin({
     currentName: string | null;
     currentPct: number;
     failures: { file: File; reason: string }[];
-  }>({ total: 0, done: 0, currentName: null, currentPct: 0, failures: [] });
+    duplicates: { file: string; existing: string }[];
+  }>({ total: 0, done: 0, currentName: null, currentPct: 0, failures: [], duplicates: [] });
+  const [missingFiles, setMissingFiles] = useState<string[]>([]);
+  const uploadManifestKey = `albm-upload-${gallery.id}`;
+
+  useEffect(() => {
+    try {
+      const raw = localStorage.getItem(uploadManifestKey);
+      if (!raw) return;
+      const manifest = JSON.parse(raw) as { filenames: string[] };
+      const present = new Set(photos.map((p) => p.filename));
+      const missing = manifest.filenames.filter((f) => !present.has(f));
+      if (missing.length > 0) setMissingFiles(missing);
+    } catch {
+      /* ignore */
+    }
+  }, [photos, uploadManifestKey]);
   const uploading = uploadState.total > 0 && uploadState.done < uploadState.total;
+
+  useEffect(() => {
+    if (!uploading) return;
+    const handler = (e: BeforeUnloadEvent) => {
+      e.preventDefault();
+      e.returnValue = '';
+    };
+    window.addEventListener('beforeunload', handler);
+    return () => window.removeEventListener('beforeunload', handler);
+  }, [uploading]);
+
   const fileInputRef = useRef<HTMLInputElement>(null);
   const folderInputRef = useRef<HTMLInputElement>(null);
   const [dragOver, setDragOver] = useState(false);
@@ -160,8 +206,18 @@ export default function GalleryAdmin({
         }
       };
       xhr.onload = () => {
-        if (xhr.status === 201) resolve(JSON.parse(xhr.responseText));
-        else reject(new Error(`HTTP ${xhr.status}`));
+        if (xhr.status === 201) {
+          resolve(JSON.parse(xhr.responseText));
+        } else if (xhr.status === 200) {
+          const data = JSON.parse(xhr.responseText);
+          if (data.duplicate) {
+            reject(new Error(`duplicate:${data.existingFilename}`));
+          } else {
+            reject(new Error(`HTTP ${xhr.status}`));
+          }
+        } else {
+          reject(new Error(`HTTP ${xhr.status}`));
+        }
       };
       xhr.onerror = () => reject(new Error('network error'));
       const form = new FormData();
@@ -189,7 +245,19 @@ export default function GalleryAdmin({
           file,
           reason: 'unsupported type',
         })),
+        duplicates: [],
       });
+      try {
+        localStorage.setItem(
+          uploadManifestKey,
+          JSON.stringify({
+            filenames: accepted.map((f) => f.name),
+            at: Date.now(),
+          }),
+        );
+      } catch {
+        /* ignore */
+      }
       for (const file of accepted) {
         setUploadState((s) => ({ ...s, currentName: file.name, currentPct: 0 }));
         let ok = false;
@@ -202,8 +270,18 @@ export default function GalleryAdmin({
             const photo = await uploadOne(file);
             setPhotos((prev) => [...prev, photo]);
             ok = true;
-          } catch {
-            /* retry */
+          } catch (err) {
+            const msg = err instanceof Error ? err.message : '';
+            if (msg.startsWith('duplicate:')) {
+              setUploadState((s) => ({
+                ...s,
+                duplicates: [
+                  ...s.duplicates,
+                  { file: file.name, existing: msg.slice('duplicate:'.length) },
+                ],
+              }));
+              ok = true;
+            }
           }
         }
         setUploadState((s) => ({
@@ -213,6 +291,11 @@ export default function GalleryAdmin({
             ? s.failures
             : [...s.failures, { file, reason: 'upload failed' }],
         }));
+      }
+      try {
+        localStorage.removeItem(uploadManifestKey);
+      } catch {
+        /* ignore */
       }
     },
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -279,6 +362,18 @@ export default function GalleryAdmin({
     if (res.ok) {
       setPhotos((prev) => prev.filter((p) => p.id !== photo.id));
       router.refresh();
+    }
+  }
+
+  async function patchAlt(photoId: string, altText: string) {
+    const res = await fetch(`/api/admin/photos/${photoId}`, {
+      method: 'PATCH',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ altText }),
+    });
+    if (res.ok) {
+      const updated = await res.json();
+      setPhotos((prev) => prev.map((p) => (p.id === photoId ? updated : p)));
     }
   }
 
@@ -389,17 +484,21 @@ export default function GalleryAdmin({
               : ' · never viewed'}
           </p>
         </div>
-        <div className="flex items-center gap-2 text-xs">
+        <div className="flex flex-col items-end gap-2 text-xs">
           <code className="max-w-[16rem] truncate rounded bg-neutral-100 px-2 py-1 dark:bg-neutral-900">
             {shareUrl}
           </code>
-          <button
-            type="button"
-            onClick={() => navigator.clipboard.writeText(shareUrl)}
-            className="border border-neutral-300 px-3 py-1 transition-colors hover:border-neutral-900 dark:border-neutral-700 dark:hover:border-neutral-100"
-          >
-            Copy link
-          </button>
+          {isClientGallery ? (
+            <ShareTools url={shareUrl} />
+          ) : (
+            <button
+              type="button"
+              onClick={() => navigator.clipboard.writeText(shareUrl)}
+              className="border border-neutral-300 px-3 py-1 transition-colors hover:border-neutral-900 dark:border-neutral-700 dark:hover:border-neutral-100"
+            >
+              Copy link
+            </button>
+          )}
         </div>
       </div>
 
@@ -450,6 +549,12 @@ export default function GalleryAdmin({
               <PasswordField
                 hasPassword={!!gallery.passwordHash}
                 onSave={(pw) => patchGallery({ password: pw })}
+              />
+              <PinField
+                pinEnabled={gallery.pinEnabled}
+                hasPin={!!gallery.pinHash}
+                onToggle={(enabled) => patchGallery({ pinEnabled: enabled })}
+                onSave={(pin) => patchGallery({ pin })}
               />
               <SegmentedControl
                 label="Client info"
@@ -533,7 +638,7 @@ export default function GalleryAdmin({
         </div>
       </section>
 
-      <AdminExtraSettings gallery={gallery} patchGallery={patchGallery} />
+      <AdminExtraSettings gallery={gallery} photos={photos} patchGallery={patchGallery} />
       <AdminSectionsPanel
         galleryId={gallery.id}
         photos={photos}
@@ -602,6 +707,26 @@ export default function GalleryAdmin({
             Upload folder
           </button>
         </div>
+        {missingFiles.length > 0 && (
+          <div className="mt-3 rounded border border-amber-500/40 bg-amber-50 p-3 text-xs text-amber-900 dark:bg-amber-950/30 dark:text-amber-200">
+            <p className="font-medium">These files didn&apos;t make it from your last upload:</p>
+            <ul className="mt-1 list-inside list-disc">
+              {missingFiles.map((f) => (
+                <li key={f}>{f}</li>
+              ))}
+            </ul>
+            <button
+              type="button"
+              className="mt-2 underline"
+              onClick={() => {
+                setMissingFiles([]);
+                localStorage.removeItem(uploadManifestKey);
+              }}
+            >
+              Dismiss
+            </button>
+          </div>
+        )}
         {uploadState.total > 0 && (
           <div className="mt-3 space-y-2 text-xs text-neutral-600 dark:text-neutral-300">
             <p>
@@ -617,6 +742,14 @@ export default function GalleryAdmin({
                 }}
               />
             </div>
+            {!uploading && uploadState.duplicates.length > 0 && (
+              <p className="text-amber-700 dark:text-amber-300">
+                Skipped duplicates:{' '}
+                {uploadState.duplicates
+                  .map((d) => `${d.file} (duplicate of ${d.existing})`)
+                  .join(', ')}
+              </p>
+            )}
             {!uploading && uploadState.failures.length > 0 && (
               <div className="text-red-600 dark:text-red-400">
                 Failed:{' '}
@@ -650,7 +783,7 @@ export default function GalleryAdmin({
       </section>
 
       {/* photo grid */}
-      <section>
+      <section ref={gridRef} tabIndex={-1} className="outline-none">
         <div className="mb-3 flex items-center justify-between">
           <h2 className="text-xs tracking-widest text-neutral-500 uppercase dark:text-neutral-400">
             Photos
@@ -750,6 +883,16 @@ export default function GalleryAdmin({
                   <div className="absolute inset-x-0 bottom-0 flex justify-between gap-1 bg-black/60 p-1 opacity-0 transition-opacity group-hover:opacity-100">
                     <button
                       type="button"
+                      onClick={() => {
+                        const alt = prompt('Alt text (max 300 chars)', p.altText ?? '');
+                        if (alt !== null) void patchAlt(p.id, alt);
+                      }}
+                      className="text-[10px] text-white hover:underline"
+                    >
+                      Alt
+                    </button>
+                    <button
+                      type="button"
                       onClick={() => setCover(p.id)}
                       className="text-[10px] text-white hover:underline"
                     >
@@ -821,17 +964,26 @@ export default function GalleryAdmin({
                     <button
                       type="button"
                       onClick={() =>
+                        navigator.clipboard.writeText(exportFilenames.join(','))
+                      }
+                      className="border border-neutral-300 px-3 py-1 transition-colors hover:border-neutral-900 dark:border-neutral-700 dark:hover:border-neutral-100"
+                    >
+                      Copy filenames
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() =>
                         navigator.clipboard.writeText(exportFilenames.join('\n'))
                       }
                       className="border border-neutral-300 px-3 py-1 transition-colors hover:border-neutral-900 dark:border-neutral-700 dark:hover:border-neutral-100"
                     >
-                      Copy
+                      Copy list
                     </button>
                     <a
                       href={`/api/admin/galleries/${gallery.id}/selections.csv`}
-                      className="underline underline-offset-4"
+                      className="border border-neutral-300 px-3 py-1 transition-colors hover:border-neutral-900 dark:border-neutral-700 dark:hover:border-neutral-100"
                     >
-                      Download CSV
+                      Export selections (CSV)
                     </a>
                   </div>
                   <textarea
@@ -847,6 +999,9 @@ export default function GalleryAdmin({
         </section>
       )}
 
+      {/* most viewed */}
+      {topViewed.length > 0 && <MostViewedStrip items={topViewed} photos={photos} />}
+
       {/* danger zone */}
       <section className="border-t border-neutral-200 pt-6 dark:border-neutral-800">
         <button
@@ -857,6 +1012,63 @@ export default function GalleryAdmin({
           Delete gallery
         </button>
       </section>
+    </div>
+  );
+}
+
+function PinField({
+  pinEnabled,
+  hasPin,
+  onToggle,
+  onSave,
+}: {
+  pinEnabled: boolean;
+  hasPin: boolean;
+  onToggle: (enabled: boolean) => void;
+  onSave: (pin: string | null) => void;
+}) {
+  const [value, setValue] = useState('');
+  return (
+    <div className="space-y-2 text-sm">
+      <ToggleSwitch
+        label="PIN access (optional)"
+        hint="Convenient, less secure than a password."
+        checked={pinEnabled}
+        onChange={onToggle}
+      />
+      {pinEnabled && (
+        <div className="flex items-center gap-2">
+          <input
+            type="text"
+            inputMode="numeric"
+            pattern="[0-9]*"
+            value={value}
+            onChange={(e) => setValue(e.target.value.replace(/\D/g, '').slice(0, 6))}
+            placeholder={hasPin ? 'New PIN (6 digits)' : 'Set PIN (6 digits)'}
+            className="flex-1 border-b border-neutral-300 bg-transparent py-1.5 text-sm outline-none dark:border-neutral-700"
+          />
+          <button
+            type="button"
+            disabled={value.length < 6}
+            onClick={() => {
+              onSave(value);
+              setValue('');
+            }}
+            className="border border-neutral-300 px-2 py-1 text-xs disabled:opacity-40 dark:border-neutral-700"
+          >
+            Set PIN
+          </button>
+          {hasPin && (
+            <button
+              type="button"
+              onClick={() => onSave(null)}
+              className="text-xs text-neutral-500 underline"
+            >
+              Clear
+            </button>
+          )}
+        </div>
+      )}
     </div>
   );
 }

@@ -25,6 +25,7 @@ export async function GET() {
     contactInstagram: getSetting('contactInstagram') ?? '',
     contactWhatsapp: getSetting('contactWhatsapp') ?? '',
     footerContent: getSetting('footerContent') ?? '',
+    defaultLanguage: getSetting('defaultLanguage') ?? 'en',
     hasWatermark: fs.existsSync(watermarkPath()),
   });
 }
@@ -84,6 +85,10 @@ export async function POST(req: Request) {
   }
   if (typeof body.footerContent === 'string') {
     setCapped('footerContent', body.footerContent, INTRO_MAX);
+  }
+  if (typeof body.defaultLanguage === 'string') {
+    const lang = body.defaultLanguage === 'nl' || body.defaultLanguage === 'it' ? body.defaultLanguage : 'en';
+    setSetting('defaultLanguage', lang);
   }
   return json({ ok: true });
 }

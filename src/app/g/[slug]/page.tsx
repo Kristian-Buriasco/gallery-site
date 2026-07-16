@@ -8,12 +8,13 @@ import { BASE_URL } from '@/lib/env';
 import { buildSectionPayloads } from '@/lib/gallery-page-data';
 import { isGalleryExpired } from '@/lib/downloads';
 import { recordGalleryView } from '@/lib/views';
-import {
-  getDistinctPhotoTagsForClientGallery,
-  getPhotoTagMapForClient,
-} from '@/lib/tags';
+import { getDistinctPhotoTagsForClientGallery, getPhotoTagMapForClient } from '@/lib/tags';
+import { getSetting } from '@/lib/settings';
+import { parseLang } from '@/lib/i18n';
+import { needsAccessGate, galleryUsesPin } from '@/lib/gallery-auth';
 import AdminEditLink from '@/components/AdminEditLink';
 import PasswordGate from './PasswordGate';
+import PinGate from './PinGate';
 import GalleryClient from './GalleryClient';
 
 export const dynamic = 'force-dynamic';
@@ -25,8 +26,9 @@ export async function generateMetadata({
 }): Promise<Metadata> {
   // Client galleries are never search-indexed. But when "Link preview" is on,
   // emit an OpenGraph card (cover + title) so sharing the album link shows a
-  // preview in chat apps. The cover only loads for published, non-password
-  // galleries (the image route auth-checks it), which keeps private ones private.
+  // preview in chat apps. Only for published, non-gated, non-expired galleries:
+  // a gated gallery's image URL would 403 for the unauthenticated crawler
+  // (and emitting it would leak nothing but a broken preview).
   const base: Metadata = { robots: { index: false, follow: false } };
   const { slug } = await params;
   const gallery = getDb()
@@ -35,6 +37,7 @@ export async function generateMetadata({
     .where(and(eq(schema.galleries.slug, slug), eq(schema.galleries.type, 'client')))
     .get();
   if (!gallery || !gallery.published || !gallery.socialPreview) return base;
+  if (needsAccessGate(gallery) || isGalleryExpired(gallery)) return base;
   const preview = previewPhotoId(gallery);
   if (!preview) return { ...base, title: gallery.title };
   const imageUrl = `${BASE_URL}/img/${preview}/web`;
@@ -85,8 +88,12 @@ export default async function ClientGalleryPage({
     await recordGalleryView(gallery.id, visitorId, visitorSession.token ?? null);
   }
 
-  if (!isPreview && gallery.passwordHash && !admin && !(await hasGalleryAccess(gallery.id))) {
-    return <PasswordGate slug={slug} title={gallery.title} />;
+  if (!isPreview && needsAccessGate(gallery) && !admin && !(await hasGalleryAccess(gallery.id))) {
+    const defaultLang = parseLang(getSetting('defaultLanguage'));
+    if (galleryUsesPin(gallery)) {
+      return <PinGate slug={slug} title={gallery.title} lang={defaultLang} />;
+    }
+    return <PasswordGate slug={slug} title={gallery.title} lang={defaultLang} />;
   }
 
   const visitorSession = await getVisitorSession(gallery.id);
@@ -144,6 +151,7 @@ export default async function ClientGalleryPage({
       }
       photoTagIds={photoTagIds}
       tagOptions={tagOptions}
+      defaultLang={parseLang(getSetting('defaultLanguage'))}
     />
     </>
   );

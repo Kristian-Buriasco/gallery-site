@@ -117,6 +117,10 @@ DATA_DIR/
 - **Docker:** `docker compose pull && docker compose up -d`. Migrations apply on boot after backing up the DB.
 - The admin panel shows a badge when a newer release exists (opt out with `DISABLE_UPDATE_CHECK=1`).
 
+### Monitoring
+
+`GET /api/health` returns `{ ok: true }` when the database is readable (no auth, no extra metadata). Point Uptime Kuma, Home Assistant, or any HTTP monitor at `https://your-domain/api/health` — expect 200 when healthy, 500 when the DB is unavailable. The Docker image `HEALTHCHECK` uses the same endpoint.
+
 ## Bare-metal (without Docker)
 
 ```bash

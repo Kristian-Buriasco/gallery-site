@@ -81,6 +81,10 @@ export const galleries = sqliteTable('galleries', {
     .default(false),
   coverPhotoId: text('cover_photo_id'),
   previewPhotoId: text('preview_photo_id'),
+  coverFocusX: integer('cover_focus_x').notNull().default(50),
+  coverFocusY: integer('cover_focus_y').notNull().default(50),
+  pinEnabled: integer('pin_enabled', { mode: 'boolean' }).notNull().default(false),
+  pinHash: text('pin_hash'),
   sortOrder: integer('sort_order').notNull().default(0),
   ...timestamps,
 });
@@ -117,6 +121,9 @@ export const photos = sqliteTable(
       .default('processing'),
     exif: text('exif'),
     capturedAt: integer('captured_at'),
+    placeholder: text('placeholder'),
+    altText: text('alt_text'),
+    contentHash: text('content_hash'),
     ...timestamps,
   },
   (t) => [unique().on(t.galleryId, t.filename)],
@@ -170,6 +177,7 @@ export const viewEvents = sqliteTable(
     galleryId: text('gallery_id')
       .notNull()
       .references(() => galleries.id, { onDelete: 'cascade' }),
+    photoId: text('photo_id').references(() => photos.id, { onDelete: 'set null' }),
     visitorId: text('visitor_id'),
     kind: text('kind').notNull(),
     createdAt: integer('created_at')

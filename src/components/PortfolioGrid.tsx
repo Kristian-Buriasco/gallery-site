@@ -104,6 +104,7 @@ export default function PortfolioGrid({
           likeCounts={counts}
           commentsEnabled={commentsEnabled}
           commentsApiBase={`/api/portfolio/${slug}/comments`}
+          slideshowLabel={{ play: 'Play slideshow', pause: 'Pause slideshow' }}
         />
       )}
     </>

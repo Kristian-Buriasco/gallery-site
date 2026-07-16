@@ -2,12 +2,16 @@ import Link from 'next/link';
 import SiteHeader from '@/components/SiteHeader';
 import SiteFooter from '@/components/SiteFooter';
 import Reveal from '@/components/Reveal';
+import JsonLd from '@/components/JsonLd';
 import { getSetting } from '@/lib/settings';
 import {
   coverPhotoId,
   getPublishedPortfolioGalleries,
   getSelectedWorkGalleries,
 } from '@/lib/public-data';
+import { coverObjectPosition } from '@/lib/cover-focus';
+import { sitePersonName } from '@/lib/feed-data';
+import { BASE_URL } from '@/lib/env';
 import type { Gallery } from '@/db/schema';
 
 export const dynamic = 'force-dynamic';
@@ -28,6 +32,12 @@ function WorkGrid({ items, startIndex = 0 }: { items: Item[]; startIndex?: numbe
                   alt={gallery.title}
                   loading="lazy"
                   className="h-full w-full object-cover transition-transform duration-700 ease-out group-hover:scale-[1.03]"
+                  style={{
+                    objectPosition: coverObjectPosition(
+                      gallery.coverFocusX,
+                      gallery.coverFocusY,
+                    ),
+                  }}
                 />
               )}
             </div>
@@ -55,16 +65,12 @@ function WorkGrid({ items, startIndex = 0 }: { items: Item[]; startIndex?: numbe
 
 export default function HomePage() {
   const featured = getSelectedWorkGalleries();
-  const featuredIds = new Set(featured.map((g) => g.id));
-  const others = getPublishedPortfolioGalleries().filter((g) => !featuredIds.has(g.id));
-
   const toItems = (gs: Gallery[]): Item[] =>
     gs.map((g) => ({ gallery: g, cover: coverPhotoId(g) }));
-  const featuredItems = toItems(featured);
-  const otherItems = toItems(others);
-
+  const workItems = toItems(featured);
+  const heroSource = getPublishedPortfolioGalleries();
   const heroItem =
-    featuredItems.find((g) => g.cover) ?? otherItems.find((g) => g.cover) ?? null;
+    toItems(heroSource).find((g) => g.cover) ?? workItems.find((g) => g.cover) ?? null;
 
   const eyebrow = getSetting('homeEyebrow') || 'Photographer';
   const headline = getSetting('homeHeadline') || 'The moment, kept.';
@@ -72,10 +78,26 @@ export default function HomePage() {
     getSetting('homeIntro') ||
     'Editorial, event, and portrait photography — with private, proof-ready galleries for clients.';
 
-  const hasFeatured = featuredItems.length > 0;
+  const hasFeatured = workItems.length > 0;
 
   return (
     <div>
+      <JsonLd
+        data={{
+          '@context': 'https://schema.org',
+          '@type': 'WebSite',
+          name: sitePersonName(),
+          url: BASE_URL,
+        }}
+      />
+      <JsonLd
+        data={{
+          '@context': 'https://schema.org',
+          '@type': 'Person',
+          name: sitePersonName(),
+          url: BASE_URL,
+        }}
+      />
       <SiteHeader />
 
       {/* Split hero: positioning left, photo right */}
@@ -112,42 +134,26 @@ export default function HomePage() {
               src={`/img/${heroItem.cover}/web`}
               alt={heroItem.gallery.title}
               className="absolute inset-0 h-full w-full object-cover"
+              style={{
+                objectPosition: coverObjectPosition(
+                  heroItem.gallery.coverFocusX,
+                  heroItem.gallery.coverFocusY,
+                ),
+              }}
             />
           )}
         </div>
       </section>
 
-      {(hasFeatured || otherItems.length > 0) && (
+      {hasFeatured && (
         <section id="work" className="mx-auto max-w-6xl px-6 py-20 md:py-28">
-          {hasFeatured && (
-            <>
-              <div className="mb-10 flex items-baseline justify-between">
-                <h2 className="display text-2xl font-semibold">Selected Work</h2>
-                <span className="text-[12px] text-muted dark:text-muted-dark">
-                  {featuredItems.length}{' '}
-                  {featuredItems.length === 1 ? 'project' : 'projects'}
-                </span>
-              </div>
-              <WorkGrid items={featuredItems} />
-            </>
-          )}
-
-          {otherItems.length > 0 && (
-            <>
-              <div
-                className={`mb-10 flex items-baseline justify-between ${hasFeatured ? 'mt-24' : ''}`}
-              >
-                <h2 className="display text-2xl font-semibold">
-                  {hasFeatured ? 'More Work' : 'Work'}
-                </h2>
-                <span className="text-[12px] text-muted dark:text-muted-dark">
-                  {otherItems.length}{' '}
-                  {otherItems.length === 1 ? 'project' : 'projects'}
-                </span>
-              </div>
-              <WorkGrid items={otherItems} startIndex={featuredItems.length} />
-            </>
-          )}
+          <div className="mb-10 flex items-baseline justify-between">
+            <h2 className="display text-2xl font-semibold">Selected Work</h2>
+            <span className="text-[12px] text-muted dark:text-muted-dark">
+              {workItems.length} {workItems.length === 1 ? 'project' : 'projects'}
+            </span>
+          </div>
+          <WorkGrid items={workItems} />
         </section>
       )}
       <SiteFooter />

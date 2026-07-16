@@ -4,6 +4,7 @@ import { useCallback, useEffect, useMemo, useState } from 'react';
 import type { Gallery, Photo } from '@/db/schema';
 import SegmentedControl from '@/components/SegmentedControl';
 import ToggleSwitch from '@/components/ToggleSwitch';
+import { coverObjectPosition } from '@/lib/cover-focus';
 
 type Section = { id: string; title: string; sortOrder: number };
 type Tag = { id: string; name: string };
@@ -138,6 +139,56 @@ function PreviewPhotoPicker({
   );
 }
 
+function CoverFocusPicker({
+  gallery,
+  photos,
+  patchGallery,
+}: {
+  gallery: Gallery;
+  photos: Photo[];
+  patchGallery: (body: Record<string, unknown>) => Promise<boolean>;
+}) {
+  const coverId = gallery.coverPhotoId ?? photos.find((p) => p.status === 'ready')?.id;
+  const cover = photos.find((p) => p.id === coverId && p.status === 'ready');
+  if (!cover) return null;
+
+  async function setFocus(e: React.MouseEvent<HTMLButtonElement>) {
+    const rect = e.currentTarget.getBoundingClientRect();
+    const x = Math.round(((e.clientX - rect.left) / rect.width) * 100);
+    const y = Math.round(((e.clientY - rect.top) / rect.height) * 100);
+    await patchGallery({ coverFocusX: x, coverFocusY: y });
+  }
+
+  return (
+    <div className="text-sm">
+      <span className="mb-1 block text-xs text-neutral-500">Cover focal point</span>
+      <button
+        type="button"
+        onClick={setFocus}
+        className="relative block aspect-[4/3] w-full max-w-xs overflow-hidden rounded border border-neutral-300 dark:border-neutral-700"
+      >
+        {/* eslint-disable-next-line @next/next/no-img-element */}
+        <img
+          src={`/img/${cover.id}/thumb?v=${cover.updatedAt}`}
+          alt="Cover preview"
+          className="h-full w-full object-cover"
+          style={{
+            objectPosition: coverObjectPosition(gallery.coverFocusX, gallery.coverFocusY),
+          }}
+        />
+        <span
+          className="pointer-events-none absolute h-3 w-3 -translate-x-1/2 -translate-y-1/2 rounded-full border-2 border-white bg-accent shadow dark:bg-accent-dark"
+          style={{
+            left: `${gallery.coverFocusX}%`,
+            top: `${gallery.coverFocusY}%`,
+          }}
+        />
+      </button>
+      <p className="mt-1 text-[11px] text-neutral-400">Click to set where square crops should focus.</p>
+    </div>
+  );
+}
+
 export function AdminGalleryTags({
   galleryId,
 }: {
@@ -239,9 +290,11 @@ export function AdminGalleryTags({
 
 export function AdminExtraSettings({
   gallery,
+  photos,
   patchGallery,
 }: {
   gallery: Gallery;
+  photos: Photo[];
   patchGallery: (body: Record<string, unknown>) => Promise<boolean>;
 }) {
   const isClient = gallery.type === 'client';
@@ -250,6 +303,7 @@ export function AdminExtraSettings({
       <h2 className="text-xs tracking-widest text-neutral-500 uppercase dark:text-neutral-400">
         Extended settings
       </h2>
+      <CoverFocusPicker gallery={gallery} photos={photos} patchGallery={patchGallery} />
       <AdminGalleryTags galleryId={gallery.id} />
       <SegmentedControl
         label="Comments"
@@ -607,6 +661,12 @@ export function AdminSectionsPanel({
     onSelectedChange(new Set(filteredPhotos.map((p) => p.id)));
   }
 
+  function invertSelection() {
+    onSelectedChange(
+      new Set(filteredPhotos.filter((p) => !selected.has(p.id)).map((p) => p.id)),
+    );
+  }
+
   const selectedPhotos = photos.filter((p) => selected.has(p.id));
 
   return (
@@ -763,6 +823,9 @@ export function AdminSectionsPanel({
         </button>
         <button type="button" onClick={selectAllVisible} disabled={filteredPhotos.length === 0}>
           Select all visible
+        </button>
+        <button type="button" onClick={invertSelection} disabled={filteredPhotos.length === 0}>
+          Invert
         </button>
         <button type="button" onClick={() => onSelectedChange(new Set())} disabled={selected.size === 0}>
           Clear selection

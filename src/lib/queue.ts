@@ -5,6 +5,7 @@ import PQueue from 'p-queue';
 import sharp from 'sharp';
 import { getDb, schema } from '@/db';
 import { thumbPath, resolveWatermarkPath, webPath, originalPath } from './paths';
+import { generatePlaceholder } from './photo-media';
 
 sharp.cache(false);
 sharp.concurrency(1);
@@ -115,9 +116,20 @@ async function generateDerivatives(photoId: string): Promise<void> {
       .webp({ quality: 75 })
       .toFile(thumbOut);
 
+    let placeholder: string | null = null;
+    try {
+      placeholder = await generatePlaceholder(src);
+    } catch {
+      /* optional */
+    }
+
     getDb()
       .update(schema.photos)
-      .set({ status: 'ready', updatedAt: Date.now() })
+      .set({
+        status: 'ready',
+        updatedAt: Date.now(),
+        ...(placeholder ? { placeholder } : {}),
+      })
       .where(eq(schema.photos.id, photoId))
       .run();
   } catch (err) {

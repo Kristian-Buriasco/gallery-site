@@ -5,6 +5,7 @@ import { getDb, schema } from '@/db';
 import { errorJson, json, requireAdmin } from '@/lib/api';
 import { parseGalleryUpdates } from '@/lib/gallery-fields';
 import { galleryDir } from '@/lib/paths';
+import { hashPin, isValidPinFormat } from '@/lib/pin';
 import { reprocessPhoto, shouldReprocessWatermark } from '@/lib/queue';
 
 type Params = { params: Promise<{ id: string }> };
@@ -36,6 +37,17 @@ export async function PATCH(req: Request, { params }: Params) {
       updates.passwordHash = await bcrypt.hash(body.password, 10);
     } else {
       updates.passwordHash = null;
+    }
+  }
+
+  if ('pin' in body) {
+    if (body.pin === null || body.pin === '') {
+      updates.pinHash = null;
+    } else if (typeof body.pin === 'string' && body.pin.length > 0) {
+      if (!isValidPinFormat(body.pin)) {
+        return errorJson('PIN must be 4–6 digits', 400);
+      }
+      updates.pinHash = await hashPin(body.pin);
     }
   }
 

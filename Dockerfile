@@ -33,14 +33,15 @@ RUN useradd --system --uid 1001 --user-group gallery \
 # migrations. Copy static assets and the hash-password helper alongside.
 COPY --from=build --chown=gallery:gallery /app/.next/standalone ./
 COPY --from=build --chown=gallery:gallery /app/.next/static ./.next/static
+COPY --from=build --chown=gallery:gallery /app/public ./public
 COPY --from=build --chown=gallery:gallery /app/scripts ./scripts
 
 USER gallery
 EXPOSE 3200
 VOLUME ["/data"]
 
-# Basic healthcheck: the homepage should return 200 once migrations applied.
+# Basic healthcheck: DB reachable via /api/health once migrations applied.
 HEALTHCHECK --interval=30s --timeout=5s --start-period=20s --retries=3 \
-  CMD node -e "fetch('http://127.0.0.1:'+(process.env.PORT||3200)+'/').then(r=>process.exit(r.ok?0:1)).catch(()=>process.exit(1))"
+  CMD node -e "fetch('http://127.0.0.1:'+(process.env.PORT||3200)+'/api/health').then(r=>r.json().then(j=>process.exit(j.ok?0:1))).catch(()=>process.exit(1))"
 
 CMD ["node", "server.js"]

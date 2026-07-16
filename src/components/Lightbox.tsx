@@ -1,6 +1,6 @@
 'use client';
 
-import { useCallback, useEffect, useRef } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 import PhotoComments from './PhotoComments';
 
 export interface LightboxPhoto {
@@ -9,6 +9,8 @@ export interface LightboxPhoto {
   width: number;
   height: number;
   exifLine?: string | null;
+  alt?: string;
+  placeholder?: string | null;
 }
 
 interface Props {
@@ -24,7 +26,11 @@ interface Props {
   likeCounts?: Record<string, number>;
   commentsEnabled?: boolean;
   commentsApiBase?: string;
+  onPhotoOpen?: (photoId: string) => void;
+  slideshowLabel?: { play: string; pause: string };
 }
+
+const SLIDE_MS = 4000;
 
 export default function Lightbox({
   photos,
@@ -39,9 +45,15 @@ export default function Lightbox({
   likeCounts,
   commentsEnabled = false,
   commentsApiBase,
+  onPhotoOpen,
+  slideshowLabel,
 }: Props) {
   const photo = photos[index];
-  const touchStartX = useRef<number | null>(null);
+  const touchStart = useRef<{ x: number; y: number } | null>(null);
+  const [playing, setPlaying] = useState(false);
+  const reducedMotion =
+    typeof window !== 'undefined' &&
+    window.matchMedia('(prefers-reduced-motion: reduce)').matches;
 
   const prev = useCallback(() => {
     onNavigate((index - 1 + photos.length) % photos.length);
@@ -49,6 +61,26 @@ export default function Lightbox({
   const next = useCallback(() => {
     onNavigate((index + 1) % photos.length);
   }, [index, photos.length, onNavigate]);
+
+  useEffect(() => {
+    if (photo?.id) onPhotoOpen?.(photo.id);
+  }, [photo?.id, onPhotoOpen]);
+
+  useEffect(() => {
+    const prevIdx = (index - 1 + photos.length) % photos.length;
+    const nextIdx = (index + 1) % photos.length;
+    for (const p of [photos[prevIdx], photos[nextIdx]]) {
+      if (!p) continue;
+      const img = new Image();
+      img.src = `/img/${p.id}/web`;
+    }
+  }, [index, photos]);
+
+  useEffect(() => {
+    if (!playing || reducedMotion) return;
+    const t = setInterval(next, SLIDE_MS);
+    return () => clearInterval(t);
+  }, [playing, reducedMotion, next]);
 
   useEffect(() => {
     function onKey(e: KeyboardEvent) {
@@ -66,20 +98,27 @@ export default function Lightbox({
 
   if (!photo) return null;
   const selected = selectedIds?.has(photo.id) ?? false;
+  const alt = photo.alt ?? photo.filename;
 
   return (
     <div
       className="fixed inset-0 z-50 flex flex-col overflow-y-auto bg-[#050505]/97 text-neutral-200"
       role="dialog"
       aria-modal="true"
+      onClick={() => setPlaying(false)}
       onTouchStart={(e) => {
-        touchStartX.current = e.touches[0].clientX;
+        touchStart.current = {
+          x: e.touches[0].clientX,
+          y: e.touches[0].clientY,
+        };
       }}
       onTouchEnd={(e) => {
-        if (touchStartX.current === null) return;
-        const dx = e.changedTouches[0].clientX - touchStartX.current;
-        touchStartX.current = null;
-        if (dx > 48) prev();
+        if (!touchStart.current) return;
+        const dx = e.changedTouches[0].clientX - touchStart.current.x;
+        const dy = e.changedTouches[0].clientY - touchStart.current.y;
+        touchStart.current = null;
+        if (dy > 64 && Math.abs(dy) > Math.abs(dx)) onClose();
+        else if (dx > 48) prev();
         else if (dx < -48) next();
       }}
     >
@@ -88,6 +127,19 @@ export default function Lightbox({
           {index + 1} / {photos.length}
         </span>
         <div className="flex items-center gap-4">
+          {photos.length > 1 && (
+            <button
+              type="button"
+              onClick={(e) => {
+                e.stopPropagation();
+                setPlaying((p) => !p);
+              }}
+              className="p-1 text-neutral-300 hover:text-white"
+              aria-label={playing ? slideshowLabel?.pause : slideshowLabel?.play}
+            >
+              {playing ? '⏸' : '▶'}
+            </button>
+          )}
           {onToggleSelect && (
             <button
               type="button"
@@ -123,8 +175,8 @@ export default function Lightbox({
         <img
           key={photo.id}
           src={`/img/${photo.id}/web`}
-          alt={photo.filename}
-          className="max-h-[70vh] max-w-full object-contain select-none"
+          alt={alt}
+          className={`max-h-[70vh] max-w-full object-contain select-none ${reducedMotion ? '' : 'transition-opacity duration-200'}`}
           draggable={false}
         />
       </div>
