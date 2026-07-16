@@ -105,7 +105,7 @@ export const galleries = sqliteTable('galleries', {
     .default(true),
   keepExifOnDownload: integer('keep_exif_on_download', { mode: 'boolean' })
     .notNull()
-    .default(false),
+    .default(true),
   allowGpsInDownload: integer('allow_gps_in_download', { mode: 'boolean' })
     .notNull()
     .default(false),

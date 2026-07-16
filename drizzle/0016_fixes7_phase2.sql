@@ -4,7 +4,7 @@ ALTER TABLE `galleries` ADD `forensic_watermark` integer DEFAULT false NOT NULL;
 ALTER TABLE `galleries` ADD `download_offer_web` integer DEFAULT false NOT NULL;--> statement-breakpoint
 ALTER TABLE `galleries` ADD `download_offer_print` integer DEFAULT false NOT NULL;--> statement-breakpoint
 ALTER TABLE `galleries` ADD `download_offer_original` integer DEFAULT true NOT NULL;--> statement-breakpoint
-ALTER TABLE `galleries` ADD `keep_exif_on_download` integer DEFAULT false NOT NULL;--> statement-breakpoint
+ALTER TABLE `galleries` ADD `keep_exif_on_download` integer DEFAULT true NOT NULL;--> statement-breakpoint
 ALTER TABLE `galleries` ADD `allow_gps_in_download` integer DEFAULT false NOT NULL;--> statement-breakpoint
 ALTER TABLE `photos` ADD `is_raw` integer DEFAULT false NOT NULL;--> statement-breakpoint
 ALTER TABLE `photos` ADD `format` text;--> statement-breakpoint
