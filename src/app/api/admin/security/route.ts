@@ -6,6 +6,7 @@ import {
 } from '@/lib/admin-auth-settings';
 import { listPasskeys } from '@/lib/passkey-store';
 import { unusedRecoveryCodeCount } from '@/lib/recovery-codes';
+import { logAdmin } from '@/lib/audit-log';
 
 export async function GET() {
   const denied = await requireAdmin();
@@ -62,5 +63,9 @@ export async function PATCH(req: Request) {
   }
 
   setPasswordLoginEnabled(enabled);
+  logAdmin('security.password_login', {
+    targetType: 'setting',
+    summary: `Password login ${enabled ? 'enabled' : 'disabled'}`,
+  });
   return json({ ok: true, passwordLoginEnabled: enabled });
 }

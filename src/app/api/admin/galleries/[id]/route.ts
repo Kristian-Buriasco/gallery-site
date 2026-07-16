@@ -46,7 +46,7 @@ export async function PATCH(req: Request, { params }: Params) {
       updates.pinHash = null;
     } else if (typeof body.pin === 'string' && body.pin.length > 0) {
       if (!isValidPinFormat(body.pin)) {
-        return errorJson('PIN must be 4–6 digits', 400);
+        return errorJson('PIN must be 6 digits', 400);
       }
       updates.pinHash = await hashPin(body.pin);
     }
