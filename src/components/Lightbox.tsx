@@ -11,6 +11,8 @@ export interface LightboxPhoto {
   exifLine?: string | null;
   alt?: string;
   placeholder?: string | null;
+  /** Derivative version stamp (photo.updatedAt) for immutable image caching. */
+  updatedAt?: number;
 }
 
 interface Props {
@@ -76,7 +78,7 @@ export default function Lightbox({
     for (const p of [photos[prevIdx], photos[nextIdx]]) {
       if (!p) continue;
       const img = new Image();
-      img.src = `/img/${p.id}/web`;
+      img.src = `/img/${p.id}/md${p.updatedAt ? `?v=${p.updatedAt}` : ''}`;
     }
   }, [index, photos]);
 
@@ -195,7 +197,9 @@ export default function Lightbox({
         {/* eslint-disable-next-line @next/next/no-img-element */}
         <img
           key={photo.id}
-          src={`/img/${photo.id}/web`}
+          src={`/img/${photo.id}/web${photo.updatedAt ? `?v=${photo.updatedAt}` : ''}`}
+          srcSet={`/img/${photo.id}/md${photo.updatedAt ? `?v=${photo.updatedAt}` : ''} 1280w, /img/${photo.id}/web${photo.updatedAt ? `?v=${photo.updatedAt}` : ''} 2048w`}
+          sizes="100vw"
           alt={alt}
           className={`max-h-[70vh] max-w-full object-contain select-none ${reducedMotion ? '' : 'transition-opacity duration-200'}`}
           draggable={false}

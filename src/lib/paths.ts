@@ -49,6 +49,12 @@ export function webPath(galleryId: string, filename: string): string {
   );
 }
 
+export function mdPath(galleryId: string, filename: string): string {
+  return assertInsideDataDir(
+    path.join(galleryDir(galleryId), 'md', webpBasename(filename)),
+  );
+}
+
 export function thumbPath(galleryId: string, filename: string): string {
   return assertInsideDataDir(
     path.join(galleryDir(galleryId), 'thumb', webpBasename(filename)),

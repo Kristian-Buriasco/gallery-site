@@ -23,7 +23,9 @@ function WorkGrid({ items, startIndex = 0 }: { items: WorkItem[]; startIndex?: n
               {cover && (
                 /* eslint-disable-next-line @next/next/no-img-element */
                 <img
-                  src={`/img/${cover}/thumb`}
+                  src={`/img/${cover}/md`}
+                  srcSet={`/img/${cover}/thumb 400w, /img/${cover}/md 1280w`}
+                  sizes="(max-width: 640px) 100vw, (max-width: 1024px) 50vw, 33vw"
                   alt={gallery.title}
                   loading="lazy"
                   className="h-full w-full object-cover transition-transform duration-700 ease-out group-hover:scale-[1.03]"

@@ -133,9 +133,9 @@ export default function SectionedGalleryGrid({
                       className="block w-full cursor-zoom-in"
                     >
                       <BlurImage
-                        src={`/img/${p.id}/thumb`}
-                        srcSet={`/img/${p.id}/thumb 1x, /img/${p.id}/web 2x`}
-                        sizes="(max-width: 768px) 50vw, 25vw"
+                        src={`/img/${p.id}/md${p.updatedAt ? `?v=${p.updatedAt}` : ''}`}
+                        srcSet={`/img/${p.id}/thumb${p.updatedAt ? `?v=${p.updatedAt}` : ''} 400w, /img/${p.id}/md${p.updatedAt ? `?v=${p.updatedAt}` : ''} 1280w`}
+                        sizes="(max-width: 640px) 50vw, (max-width: 1024px) 33vw, 25vw"
                         alt={p.alt ?? p.filename}
                         width={p.width}
                         height={p.height}

@@ -4,7 +4,7 @@ import { eq } from 'drizzle-orm';
 import PQueue from 'p-queue';
 import sharp from 'sharp';
 import { getDb, schema } from '@/db';
-import { thumbPath, resolveWatermarkPath, webPath, originalPath, workingJpegPath } from './paths';
+import { thumbPath, mdPath, resolveWatermarkPath, webPath, originalPath, workingJpegPath } from './paths';
 import { generatePlaceholder } from './photo-media';
 
 sharp.cache(false);
@@ -50,7 +50,87 @@ function watermarkPlacement(
   }
 }
 
-function derivativeSource(photo: { galleryId: string; filename: string; isRaw: boolean }): string {
+export interface WatermarkOpts {
+  enabled: boolean;
+  scale?: number | null;
+  opacity?: number | null;
+  position?: string | null;
+}
+
+export function watermarkOptsFor(gallery: {
+  watermarkEnabled: boolean;
+  watermarkScale?: number | null;
+  watermarkOpacity?: number | null;
+  watermarkPosition?: string | null;
+}): WatermarkOpts {
+  return {
+    enabled: gallery.watermarkEnabled,
+    scale: gallery.watermarkScale,
+    opacity: gallery.watermarkOpacity,
+    position: gallery.watermarkPosition,
+  };
+}
+
+/**
+ * Resize `src` to fit within `maxEdge` and write a WebP to `outPath`, compositing
+ * the gallery/global watermark when `wm.enabled`. Shared by the derivative queue,
+ * the lazy `/img` generator, and the backfill script so all three stay identical.
+ */
+export async function renderWebpVariant(
+  src: string,
+  maxEdge: number,
+  quality: number,
+  outPath: string,
+  galleryId: string,
+  wm: WatermarkOpts,
+): Promise<void> {
+  fs.mkdirSync(path.dirname(outPath), { recursive: true });
+  const resized = sharp(src)
+    .rotate()
+    .resize(maxEdge, maxEdge, { fit: 'inside', withoutEnlargement: true });
+
+  const wmPath = resolveWatermarkPath(galleryId);
+  if (wm.enabled && fs.existsSync(wmPath)) {
+    const resizedBuf = await resized.toBuffer();
+    const meta = await sharp(resizedBuf).metadata();
+    const imgW = meta.width ?? maxEdge;
+    const imgH = meta.height ?? maxEdge;
+    const scalePct = Math.min(100, Math.max(5, wm.scale ?? 25)) / 100;
+    const targetW = Math.max(1, Math.round(imgW * scalePct));
+    const pad = Math.max(8, Math.round(imgW * 0.02));
+    const opacity = Math.min(100, Math.max(0, wm.opacity ?? 70)) / 100;
+    const wmBuf = await sharp(wmPath)
+      .resize(targetW, undefined, { fit: 'inside', withoutEnlargement: true })
+      .ensureAlpha()
+      .composite([
+        {
+          input: Buffer.from([255, 255, 255, Math.round(opacity * 255)]),
+          raw: { width: 1, height: 1, channels: 4 },
+          tile: true,
+          blend: 'dest-in',
+        },
+      ])
+      .png()
+      .toBuffer();
+    const wmMeta = await sharp(wmBuf).metadata();
+    const { left, top } = watermarkPlacement(
+      (wm.position ?? 'br') as WmPosition,
+      imgW,
+      imgH,
+      wmMeta.width ?? 0,
+      wmMeta.height ?? 0,
+      pad,
+    );
+    await sharp(resizedBuf)
+      .composite([{ input: wmBuf, left, top }])
+      .webp({ quality })
+      .toFile(outPath);
+  } else {
+    await resized.webp({ quality }).toFile(outPath);
+  }
+}
+
+export function derivativeSource(photo: { galleryId: string; filename: string; isRaw: boolean }): string {
   if (photo.isRaw) {
     const working = workingJpegPath(photo.galleryId, photo.filename);
     if (fs.existsSync(working)) return working;
@@ -71,58 +151,15 @@ async function generateDerivatives(photoId: string): Promise<void> {
 
   const src = derivativeSource(photo);
   const webOut = webPath(photo.galleryId, photo.filename);
+  const mdOut = mdPath(photo.galleryId, photo.filename);
   const thumbOut = thumbPath(photo.galleryId, photo.filename);
+  const wm = watermarkOptsFor(gallery);
 
   try {
-    fs.mkdirSync(path.dirname(webOut), { recursive: true });
-    fs.mkdirSync(path.dirname(thumbOut), { recursive: true });
-
-    const resized = sharp(src).rotate().resize(2048, 2048, {
-      fit: 'inside',
-      withoutEnlargement: true,
-    });
-
-    const wmPath = resolveWatermarkPath(photo.galleryId);
-    if (gallery.watermarkEnabled && fs.existsSync(wmPath)) {
-      const resizedBuf = await resized.toBuffer();
-      const meta = await sharp(resizedBuf).metadata();
-      const imgW = meta.width ?? 2048;
-      const imgH = meta.height ?? 2048;
-      const scalePct = Math.min(100, Math.max(5, gallery.watermarkScale ?? 25)) / 100;
-      const targetW = Math.max(1, Math.round(imgW * scalePct));
-      const pad = Math.max(8, Math.round(imgW * 0.02));
-      const opacity = Math.min(100, Math.max(0, gallery.watermarkOpacity ?? 70)) / 100;
-      const wm = await sharp(wmPath)
-        .resize(targetW, undefined, { fit: 'inside', withoutEnlargement: true })
-        .ensureAlpha()
-        .composite([
-          {
-            input: Buffer.from([255, 255, 255, Math.round(opacity * 255)]),
-            raw: { width: 1, height: 1, channels: 4 },
-            tile: true,
-            blend: 'dest-in',
-          },
-        ])
-        .png()
-        .toBuffer();
-      const wmMeta = await sharp(wm).metadata();
-      const wmW = wmMeta.width ?? 0;
-      const wmH = wmMeta.height ?? 0;
-      const pos = (gallery.watermarkPosition ?? 'br') as WmPosition;
-      const { left, top } = watermarkPlacement(pos, imgW, imgH, wmW, wmH, pad);
-      await sharp(resizedBuf)
-        .composite([{ input: wm, left, top }])
-        .webp({ quality: 82 })
-        .toFile(webOut);
-    } else {
-      await resized.webp({ quality: 82 }).toFile(webOut);
-    }
-
-    await sharp(src)
-      .rotate()
-      .resize(400, 400, { fit: 'inside', withoutEnlargement: true })
-      .webp({ quality: 75 })
-      .toFile(thumbOut);
+    // Full (2048) + mid (1280) carry the watermark; the 400px thumb never does.
+    await renderWebpVariant(src, 2048, 82, webOut, photo.galleryId, wm);
+    await renderWebpVariant(src, 1280, 82, mdOut, photo.galleryId, wm);
+    await renderWebpVariant(src, 400, 75, thumbOut, photo.galleryId, { enabled: false });
 
     let placeholder: string | null = null;
     try {

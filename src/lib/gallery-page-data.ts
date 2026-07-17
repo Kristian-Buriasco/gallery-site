@@ -10,6 +10,7 @@ export function mapPhotosForLightbox(gallery: Gallery, photos: Photo[]): Lightbo
     width: p.width,
     height: p.height,
     placeholder: p.placeholder,
+    updatedAt: p.updatedAt,
     alt: photoAltText(p, gallery.title),
     exifLine:
       gallery.showExif && p.exif
