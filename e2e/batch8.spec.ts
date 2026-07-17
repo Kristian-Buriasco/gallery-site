@@ -46,3 +46,14 @@ test('md variant serves + lazy-regenerates', async ({ playwright }) => {
   await anon.dispose();
   void mdFile;
 });
+
+test('unknown gallery renders the branded 404', async ({ page }) => {
+  const env = loadTestEnv();
+  const res = await page.goto(`${env.baseUrl}/g/does-not-exist-xyz`);
+  // Branded not-found UI is the deliverable. (Status is 200, not 404, because
+  // these public routes are force-dynamic and notFound() during streaming
+  // returns a 200 shell — a pre-existing Next behavior, not a regression.)
+  expect(res?.status()).toBeLessThan(500);
+  await expect(page.getByText("This page doesn't exist")).toBeVisible();
+  await expect(page.getByRole('link', { name: 'Back to home' })).toBeVisible();
+});
