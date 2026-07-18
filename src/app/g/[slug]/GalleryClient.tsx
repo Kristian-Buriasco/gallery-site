@@ -14,6 +14,13 @@ import LanguageSwitcher, { getStoredLang } from '@/components/LanguageSwitcher';
 import ThemeToggle from '@/components/ThemeToggle';
 import ShareTools from '@/components/ShareTools';
 import { DEFAULT_LIST_NAME } from '@/lib/selection-constants';
+import { CONSENT_COOKIE } from '@/lib/consent';
+
+/** True once the visitor has made any cookie-consent choice. */
+function hasConsentChoice(): boolean {
+  if (typeof document === 'undefined') return false;
+  return new RegExp(`(?:^|; )${CONSENT_COOKIE}=`).test(document.cookie);
+}
 
 interface SelectionListInfo {
   id: string;
@@ -84,9 +91,18 @@ export default function GalleryClient({
   const [sections, setSections] = useState(initialSections);
   const photos = useMemo(() => sections.flatMap((s) => s.photos), [sections]);
   const [visitorReady, setVisitorReady] = useState(hasVisitor);
+  const needsInfo = !hasVisitor && clientInfoMode !== 'off';
+  // Required mode gates immediately; optional mode holds the welcome modal until
+  // the visitor has answered the cookie banner, so the two never stack on entry.
   const [showInfoModal, setShowInfoModal] = useState(
-    !hasVisitor && clientInfoMode !== 'off',
+    needsInfo && clientInfoMode === 'required',
   );
+  useEffect(() => {
+    if (needsInfo && clientInfoMode === 'optional' && hasConsentChoice()) {
+      setShowInfoModal(true);
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
   const [selected, setSelected] = useState<Set<string>>(
     () => new Set(initialSelectedIds),
   );
@@ -366,8 +382,8 @@ export default function GalleryClient({
               </p>
             )}
           </div>
-          <div className="flex flex-wrap items-center gap-3 text-xs">
-            <div className="flex flex-wrap items-center gap-1">
+          <div className="-mx-4 flex items-center gap-3 overflow-x-auto px-4 pb-1 text-xs [&::-webkit-scrollbar]:hidden [&>*]:shrink-0 sm:mx-0 sm:flex-wrap sm:overflow-visible sm:px-0 sm:pb-0">
+            <div className="flex flex-nowrap items-center gap-1 sm:flex-wrap">
               <span className="text-muted dark:text-muted-dark">{t(lang, 'selectionLists')}:</span>
               <button
                 type="button"

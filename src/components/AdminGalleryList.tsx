@@ -15,6 +15,7 @@ export type GalleryListRow = {
   sizeBytes: number;
   expired: boolean;
   folderId: string | null;
+  coverPhotoId: string | null;
 };
 
 export type FolderRow = {
@@ -31,13 +32,26 @@ function GalleryRow({ r }: { r: GalleryListRow }) {
       href={`/admin/galleries/${r.id}`}
       className="flex items-center justify-between gap-4 py-3 pl-4 transition-colors hover:bg-neutral-100/60 dark:hover:bg-neutral-900/60"
     >
-      <div className="min-w-0">
-        <p className="truncate text-sm font-medium">{r.title}</p>
-        <p className="mt-0.5 text-xs text-neutral-500">
-          {r.type === 'portfolio' ? 'Portfolio' : 'Client'} · {r.photoCount} photos ·{' '}
-          {formatBytes(r.sizeBytes)}
-          {r.expired ? ' · Expired' : ''}
-        </p>
+      <div className="flex items-center gap-3 min-w-0">
+        <div className="h-14 w-14 shrink-0 overflow-hidden rounded bg-neutral-100 dark:bg-neutral-900">
+          {r.coverPhotoId && (
+            /* eslint-disable-next-line @next/next/no-img-element */
+            <img
+              src={`/img/${r.coverPhotoId}/thumb`}
+              alt=""
+              loading="lazy"
+              className="h-full w-full object-cover"
+            />
+          )}
+        </div>
+        <div className="min-w-0">
+          <p className="truncate text-sm font-medium">{r.title}</p>
+          <p className="mt-0.5 text-xs text-neutral-500">
+            {r.type === 'portfolio' ? 'Portfolio' : 'Client'} · {r.photoCount} photos ·{' '}
+            {formatBytes(r.sizeBytes)}
+            {r.expired ? ' · Expired' : ''}
+          </p>
+        </div>
       </div>
       <span className="shrink-0 rounded-full border px-2 py-0.5 text-[11px]">
         {r.published ? 'Published' : 'Draft'}

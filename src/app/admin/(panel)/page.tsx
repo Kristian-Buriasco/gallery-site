@@ -1,7 +1,7 @@
 import Link from 'next/link';
 import { Suspense } from 'react';
 import { redirect } from 'next/navigation';
-import { asc, eq, sql } from 'drizzle-orm';
+import { and, asc, eq, sql } from 'drizzle-orm';
 import { getDb, schema } from '@/db';
 import { BarChart, LineChart } from '@/components/AdminCharts';
 import AdminGalleryList, { type GalleryListRow } from '@/components/AdminGalleryList';
@@ -46,6 +46,7 @@ export default async function AdminDashboard() {
           .get()?.c ?? 0,
       sizeBytes: 0,
       expired: isGalleryExpired(g),
+      coverPhotoId: g.previewPhotoId ?? g.coverPhotoId ?? null,
     }));
     return (
       <div>
@@ -95,6 +96,18 @@ export default async function AdminDashboard() {
         .get()?.c ?? 0,
     sizeBytes: storage.galleries.find((s) => s.id === g.id)?.sizeBytes ?? 0,
     expired: isGalleryExpired(g),
+    // Explicit cover/preview, else fall back to the first ready photo so the
+    // row thumbnail isn't an empty box for galleries without a chosen cover.
+    coverPhotoId:
+      g.previewPhotoId ??
+      g.coverPhotoId ??
+      db
+        .select({ id: schema.photos.id })
+        .from(schema.photos)
+        .where(and(eq(schema.photos.galleryId, g.id), eq(schema.photos.status, 'ready')))
+        .orderBy(asc(schema.photos.sortOrder))
+        .get()?.id ??
+      null,
   }));
 
   const folders = db

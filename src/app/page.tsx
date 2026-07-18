@@ -60,7 +60,11 @@ export default function HomePage() {
       />
       <SiteHeader />
 
-      <section className="mx-auto grid max-w-6xl grid-cols-1 items-stretch gap-px overflow-hidden border-y border-line md:grid-cols-2 dark:border-line-dark">
+      <section
+        className={`mx-auto grid max-w-6xl grid-cols-1 items-stretch gap-px overflow-hidden border-y border-line dark:border-line-dark ${
+          heroItem?.cover ? 'md:grid-cols-2' : ''
+        }`}
+      >
         <div className="flex flex-col justify-center px-6 py-16 md:py-24">
           <p className="mb-5 text-[11px] tracking-[0.16em] text-muted uppercase dark:text-muted-dark">
             {eyebrow}
@@ -86,19 +90,21 @@ export default function HomePage() {
             </Link>
           </div>
         </div>
-        <div className="relative min-h-[46vh] bg-line/50 md:min-h-full dark:bg-line-dark/40">
-          {heroItem?.cover && (
-            /* eslint-disable-next-line @next/next/no-img-element */
+        {heroItem?.cover && (
+          <div className="relative min-h-[46vh] bg-line/50 md:min-h-full dark:bg-line-dark/40">
+            {/* eslint-disable-next-line @next/next/no-img-element */}
             <img
               src={`/img/${heroItem.cover}/web`}
+              srcSet={`/img/${heroItem.cover}/md 1280w, /img/${heroItem.cover}/web 2048w`}
+              sizes="(max-width: 768px) 100vw, 50vw"
               alt={heroItem.gallery.title}
               className="absolute inset-0 h-full w-full object-cover"
               style={{
                 objectPosition: `${heroItem.gallery.coverFocusX}% ${heroItem.gallery.coverFocusY}%`,
               }}
             />
-          )}
-        </div>
+          </div>
+        )}
       </section>
 
       <WorkSection
