@@ -12,14 +12,17 @@ All notable changes to Albm are documented here. Format follows
 - **Login visibility**: each admin sign-in is audit-logged with device + location; a login from a
   new device/location is flagged (`admin.login.new`).
 - **Audit log**: filter by actor and time range, plus CSV export.
-- **Location analytics**: optional, self-hosted IP→coarse-location via a local MaxMind
-  GeoLite2-City DB (`$DATA_DIR/GeoLite2-City.mmdb`); no external calls, no raw IPs stored — only
-  coarse strings. Absent DB → "Unknown". Powers viewer **Top locations** and admin login location.
+- **Location analytics**: optional, self-hosted IP→coarse-location via a local MaxMind-DB-format
+  database at `$DATA_DIR/GeoLite2-City.mmdb`; no external calls at lookup time, no raw IPs stored —
+  only coarse strings. Absent DB → "Unknown". Powers viewer **Top locations** and admin login location.
+- `scripts/fetch-geoip.mjs` — fetches a free, no-key database (DB-IP City Lite, CC-BY) into place.
 - **Insights** gains **peak viewing hours**, **top locations**, and **traffic sources** (referrers).
 
 ### Notes
-- City/location data only appears once you place a GeoLite2-City DB at `$DATA_DIR/GeoLite2-City.mmdb`
-  (free from MaxMind). Everything else works without it.
+- Location data appears once a database is present: run
+  `DATA_DIR=/opt/sites/gallery/data node scripts/fetch-geoip.mjs` (re-run monthly to refresh), or
+  drop your own MaxMind GeoLite2-City.mmdb there. Everything else works without it.
+- IP geolocation by [DB-IP](https://db-ip.com) (CC-BY 4.0).
 
 ## [1.8.0] — 2026-07-18
 
