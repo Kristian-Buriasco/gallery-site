@@ -37,3 +37,10 @@ demo-data/
 
 # tesseract.js lang data (cached under DATA_DIR at runtime)
 *.traineddata
+
+# internal planning / specs — kept local, not published to the public repo
+/FIXES*.md
+/SPEC.md
+/PASSKEY-SPEC.md
+/RELEASE-SPEC.md
+/docs/superpowers/
