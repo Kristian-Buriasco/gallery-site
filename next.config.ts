@@ -8,6 +8,7 @@ const nextConfig: NextConfig = {
   serverExternalPackages: [
     'better-sqlite3',
     'sharp',
+    'maxmind',
     'tesseract.js',
     '@vladmandic/face-api',
     '@tensorflow/tfjs',
